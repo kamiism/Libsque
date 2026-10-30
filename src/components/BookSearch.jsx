@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import { Link } from "react-router-dom";
 
 function BookSearch() {
     const [query, setQuery] = useState("");
@@ -53,27 +53,38 @@ function BookSearch() {
                 <p className="text-stone-500">Ssearching...</p>
             )}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                {books.map((book)=> (
-                    <div key={book.key}>
-                    {book.coverId ? (<img src={`https://covers.openlibrary.org/b/id/${book.coverId}-M.jpg`}
-                    alt={book.title}
-                    className="w-full aspect-2/3 object-cover rounded-md"
+                {books.map((book) => (
+                <Link
+                    to={`/book/${book.id.replace("/works/", "")}`}
+                    key={book.id}
+                    className="block text-black no-underline"
+                >
+                    {book.coverId ? (
+                    <img
+                        src={`https://covers.openlibrary.org/b/id/${book.coverId}-M.jpg`}
+                        alt={book.title}
+                        className="w-full aspect-2/3 object-cover rounded-md"
                     />
                     ) : (
-                        <div 
-                        className="w-full aspect-2/3 bg-stone-300 rounded-md flex items-center 
-                        justify-center text-stone-500">
-                            No Cover
-                        </div>
-                    )}
-                        <h2 className="font-semibold mt-3">{book.title}</h2>
-                        <p className="text-sm text-stone-500">
-                            {book.author}
-                        </p>
-                        {book.year && (
-                            <p className="text-xs text-stone-400 mt-1">{book.year}</p>
-                        )}
+                    <div className="w-full aspect-2/3 bg-stone-300 rounded-md flex items-center justify-center text-stone-500">
+                        No cover
                     </div>
+                    )}
+
+                    <h2 className="font-semibold mt-3">
+                    {book.title}
+                    </h2>
+
+                    <p className="text-sm text-stone-500">
+                    {book.author}
+                    </p>
+
+                    {book.year && (
+                    <p className="text-xs text-stone-400 mt-1">
+                        {book.year}
+                    </p>
+                    )}
+                </Link>
                 ))}
             </div>
         </div>

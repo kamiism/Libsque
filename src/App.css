@@ -1,0 +1,14 @@
+#root {
+  min-height: 100vh;
+}
+
+.app {
+  min-height: 100vh;
+  background: #f5f1e8;
+  color: #1d1d1b;
+}
+
+.navbar {
+  height: 80px;
+  padding: 0 8%
+}

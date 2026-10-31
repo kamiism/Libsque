@@ -8,6 +8,7 @@ function BookDetails() {
     const [book, setBook] = useState(null);
     const [author, setAuthor] = useState("Unknown author");
     const [loading, setLoading] = useState(true);
+    const [rating, setRating] = useState(0);
 
     async function addToLibrary(status) {
         try{
@@ -64,6 +65,37 @@ function BookDetails() {
             } catch(error){
                 console.error("Failed to update:",error);
                 alert(error.message);
+        }
+    }
+
+    async function rateBook(newRating) {
+        try {
+            const user = await account.get();
+            const existing = await databases.listDocuments(
+            import.meta.env.VITE_APPWRITE_DATABASE_ID,
+            import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
+            [
+                Query.equal("userId", user.$id),
+                Query.equal("bookId", bookId),
+            ]
+            );
+            if (existing.documents.length === 0) {
+            alert("Add this book to your library before rating it.");
+            return;
+            }
+            const document = existing.documents[0];
+            await databases.updateDocument(
+            import.meta.env.VITE_APPWRITE_DATABASE_ID,
+            import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
+            document.$id,
+            {
+                rating: newRating,
+            }
+            );
+            setRating(newRating);
+        } catch (error) {
+            console.error("Rating failed:", error);
+            alert(error.message);
         }
     }
 
@@ -152,6 +184,20 @@ function BookDetails() {
                             <button 
                             onClick={() => addToLibrary("read")}
                             className="bg-black text-white px-5 py-3 rounded-lg cursor-pointer">Read</button>
+                        </div>
+                        <div className="mt-6">
+                            <p className="font-semibold mb-2">Your rating</p>
+                            <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        onClick={() => rateBook(star)}
+                                        className="text-3xl cursor-pointer"
+                                    >
+                                        {star <= rating ? "★" : "☆"}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>

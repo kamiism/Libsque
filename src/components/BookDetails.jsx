@@ -10,6 +10,7 @@ function BookDetails() {
     const [loading, setLoading] = useState(true);
     const [rating, setRating] = useState(0);
     const [libraryEntry, setLibraryEntry] = useState(null);
+    const [progress, setProgress] = useState(0);
 
     async function addToLibrary(status) {
         try{
@@ -102,6 +103,50 @@ function BookDetails() {
         }
     }
 
+    async function toggleFavorite() {
+        try {
+            if (!libraryEntry) {
+            alert("Add this book to your library first.");
+            return;
+            }
+
+            const newFavorite = !libraryEntry.favorite;
+            const updated = await databases.updateDocument(
+            import.meta.env.VITE_APPWRITE_DATABASE_ID,
+            import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
+            libraryEntry.$id,
+            {
+                favorite: newFavorite,
+            }
+            );
+            setLibraryEntry(updated);
+        } catch (error) {
+            console.error("Favorite update failed:", error);
+            alert(error.message);
+        }
+    }
+
+    async function updateProgress(newProgress) {
+        try {
+            if(!libraryEntry) {
+                return;
+            }
+            const updated = await databases.updateDocument(
+                import.meta.env.VITE_APPWRITE_DATABASE_ID,
+                import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
+                libraryEntry.$id,
+                {
+                    progress: Number(newProgress)
+                }
+            );
+            setLibraryEntry(updated);
+            setProgress(updated.progress)
+        } catch(error) {
+            console.error("Progression update failed:",error);
+            alert(error.message);
+        }
+    }
+
     useEffect(() => {
     async function loadLibraryEntry() {
         try{
@@ -119,9 +164,11 @@ function BookDetails() {
 
                 setLibraryEntry(entry);
                 setRating(entry.rating || 0);
+                setProgress(entry.progress || 0);
             } else {
                 setLibraryEntry(null);
                 setRating(0);
+                setProgress(0);
             }
         } catch(error) {
             console.error("Cannot load library entry:",error)
@@ -250,6 +297,30 @@ function BookDetails() {
                                     </button>
                                 ))}
                             </div>
+                            <button
+                            onClick={toggleFavorite}
+                            className="mt-5 text-lg cursor-pointer"
+                            >
+                                {libraryEntry?.favorite
+                                    ? "♥ Favourite"
+                                    : "♡ Add to favourites"}
+                            </button>
+                            {libraryEntry?.status === "reading" && (
+                                <div className="mt-6">
+                                    <p className="font-semibold mb-2">
+                                        Reading Progress - {progress}%
+                                    </p>
+                                    <input 
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={progress}
+                                        onChange={(e) => setProgress(Number(e.target.value))}
+                                        onMouseUp={(e) => updateProgress(e.target.value)}
+                                        className="w-full cursor-pointer"
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

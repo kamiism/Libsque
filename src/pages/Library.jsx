@@ -18,6 +18,19 @@ function BookCard({book}) {
             )}
             <h3 className="font-semibold group-hover:underline">{book.title}</h3>
             <p className="text-sm text-stone-500">{book.author}</p>
+            {book.status === "reading" && (
+                <div className="mt-2">
+                    <div className="w-full h-1.5 bg-stone-300 rounded-full">
+                        <div 
+                            className="h-1.5 bg-black rounded-full"
+                            style={{ width: `${book.progress || 0}%` }}
+                        />
+                    </div>
+                    <p className="text-xs text-stone-500 mt-1">
+                        {book.progress || 0}% read
+                    </p>
+                </div>
+            )}
         </Link>
     )
 }

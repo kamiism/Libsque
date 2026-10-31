@@ -17,6 +17,12 @@ function Navbar() {
           Search
         </Link>
         <Link
+          to="/profile"
+          className="hover:underline"
+        >
+          Profile
+      </Link>
+        <Link
           to="/library"
           className="hover:underline"
         >

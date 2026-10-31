@@ -9,11 +9,20 @@ function Profile() {
     const [displayName, setDisplayName] = useState("");
     const [bio, setBio] = useState("");
     const [editing, setEditing] = useState(false);
+    const [library, setLibrary] = useState([]);
 
     useEffect(() => {
         async function loadProfile() {
             try {
                 const user = await account.get();
+                const libraryResult = await databases.listDocuments(
+                    import.meta.env.VITE_APPWRITE_DATABASE_ID,
+                    import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
+                    [
+                        Query.equal("userId", user.$id)
+                    ]
+                )
+                setLibrary(libraryResult.documents);
                 const result = await databases.listDocuments(
                     import.meta.env.VITE_APPWRITE_DATABASE_ID,
                     import.meta.env.VITE_APPWRITE_PROFILES_COLLECTION_ID,
@@ -36,6 +45,18 @@ function Profile() {
         }
         loadProfile();
     },[])
+
+    const booksRead = library.filter(
+        (book) => book.status === "read"
+    ).length;
+
+    const currentlyReading = library.filter(
+        (book) => book.status === "reading"
+    ).length;
+
+    const wantToRead = library.filter(
+        (book) => book.status === "want_to_read"
+    ).length;
 
     async function createProfile(e) {
         e.preventDefault();
@@ -164,6 +185,20 @@ function Profile() {
                         <h2 className="text-3xl font-bold">{profile.displayName}</h2>
                         <p className="text-stone-500 mb-5">@{profile.username}</p>
                         <p className="mb-6">{profile.bio || "No Bio Yet"}</p>
+                        <div className="flex gap-8 mb-8">
+                            <div>
+                                <p className="text-2xl font-bold">{booksRead}</p>
+                                <p className="text-sm text-stone-500">Books Read</p>
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold">{currentlyReading}</p>
+                                <p className="text-sm text-stone-500">Reading</p>
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold">{wantToRead}</p>
+                                <p className="text-sm text-stone-500">Want to Read</p>
+                            </div>
+                        </div>
                         <button
                             onClick={() => setEditing(true)}
                             className="border border-stone-300 px-5 py-2 rounded-lg cursor-pointer"

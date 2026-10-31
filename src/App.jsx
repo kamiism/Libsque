@@ -1,7 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import BookDetails from "./components/BookDetails";
 import BookSearch from "./components/BookSearch";
-import Navbar from "./components/NavBar";
+import Navbar from "./components/Navbar";
 import Library from "./pages/Library";
 import Auth from "./pages/LoginPage";
 import Profile from "./pages/Profile";

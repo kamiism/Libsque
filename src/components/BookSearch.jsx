@@ -36,6 +36,12 @@ function BookSearch() {
     return(
         <div className="min-h-screen bg-stone-100 p-10">
             <h1 className="text-4xl font-bold mb-8">LIBSQUE</h1>
+            <Link
+            to="/login"
+            className="bg-black text-white px-5 py-2 rounded-lg no-underline"
+            >
+                Sign In
+            </Link>
             <form onSubmit={searchBooks} className="flex gap-2 max-w-xl mb-10">
                 <input 
                 type="text" 
@@ -44,13 +50,13 @@ function BookSearch() {
                 onChange={(e)=>setQuery(e.target.value)}
                 className="flex-1 border border-stone-300 rounded-lg px-4 py-3"
                 />
-                <button type="sumbit" className="bg-black text-white px-6 rounded-lg cursor-pointer">
+                <button type="submit" className="bg-black text-white px-6 rounded-lg cursor-pointer">
                     Search
                 </button>
             </form>
 
             {loading && (
-                <p className="text-stone-500">Ssearching...</p>
+                <p className="text-stone-500">Searching...</p>
             )}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
                 {books.map((book) => (
@@ -68,7 +74,7 @@ function BookSearch() {
                     ) : (
                     <div className="w-full aspect-2/3 bg-stone-300 rounded-md flex items-center justify-center text-stone-500">
                         No cover
-                    </div>
+                    </div>  
                     )}
 
                     <h2 className="font-semibold mt-3">

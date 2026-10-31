@@ -1,4 +1,4 @@
-import { ID, Permission, Role } from "appwrite";
+import { ID, Permission, Query, Role } from "appwrite";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { account, databases } from "../appwrite/config";
@@ -11,12 +11,38 @@ function BookDetails() {
     async function addToLibrary(status) {
         try{
             const user = await account.get();
-            const result = await databases.createDocument(
+
+            const existing = await databases.listDocuments(
+                import.meta.env.VITE_APPWRITE_DATABASE_ID,
+                import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,    
+                [
+                    Query.equal("userId", user.$id),
+                    Query.equal("bookId", bookId)
+                ]
+            )
+
+            if(existing.documents.length>0) {
+                const document  = existing.documents[0];
+
+                const updated = await databases.updateDocument(
+                    import.meta.env.VITE_APPWRITE_DATABASE_ID,
+                    import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
+                    document.$id,
+                    {
+                        status: status
+                    }
+                )
+                console.log("Library entry updated:",updated);
+                alert(`Status changed to ${status}`);
+
+                return;
+            }
+
+            const created = await databases.createDocument(
                 import.meta.env.VITE_APPWRITE_DATABASE_ID,
                 import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
-
                 ID.unique(),{
-                    userid: user.$id,
+                    userId: user.$id,
                     bookId: bookId,
                     title: book.title,
                     author: "Unknown Author",
@@ -25,16 +51,17 @@ function BookDetails() {
                     rating: null,
                     favorite: false,
                     progress: 0,
-                }, [
-                    Permission.read(Role.user(user.$id)),
-                    Permission.update(Role.user(user.$id)),
-                    Permission.delete(Role.user(user.$id)),
-                ]
+                }, 
+                    [
+                        Permission.read(Role.user(user.$id)),
+                        Permission.update(Role.user(user.$id)),
+                        Permission.delete(Role.user(user.$id)),
+                    ]
             );
-            console.log("Added to Library:",result);
+            console.log("Library Entry Created:",created);
             alert("Added to your library");
             } catch(error){
-                console.error("Failed to add book:",error);
+                console.error("Failed to update:",error);
                 alert(error.message);
         }
     }

@@ -1,5 +1,6 @@
 import { ID, Query } from "appwrite";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { account, databases } from "../appwrite/config";
 
 function Profile() {
@@ -57,6 +58,10 @@ function Profile() {
     const wantToRead = library.filter(
         (book) => book.status === "want_to_read"
     ).length;
+
+    const favorites = library.filter(
+        (book) => book.favorite === true
+    );
 
     async function createProfile(e) {
         e.preventDefault();
@@ -199,6 +204,29 @@ function Profile() {
                                 <p className="text-sm text-stone-500">Want to Read</p>
                             </div>
                         </div>
+                        {favorites.length > 0 && (
+                            <div className="mb-10">
+                                <h3 className="text-2xl font-bold mb-5">Favorite Books</h3>
+                                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+                                    {favorites.map((book) =>(
+                                        <Link
+                                            key={book.$id}
+                                            to={`/book/${book.bookId}`}
+                                            className="group"
+                                        >
+                                            {book.coverId && (
+                                                <img 
+                                                    src={`https://covers.openlibrary.org/b/id/${book.coverId}-M.jpg`}
+                                                    alt={book.title}
+                                                    className="w-full rounded-lg group-hover:opacity-80 transition"
+                                                />
+                                            )}
+                                            <p className="text-sm font-semibold mt-2 group-hover:underline">{book.title}</p>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         <button
                             onClick={() => setEditing(true)}
                             className="border border-stone-300 px-5 py-2 rounded-lg cursor-pointer"

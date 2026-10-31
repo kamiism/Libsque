@@ -6,6 +6,7 @@ import { account, databases } from "../appwrite/config";
 function BookDetails() {
     const {bookId} = useParams();
     const [book, setBook] = useState(null);
+    const [author, setAuthor] = useState("Unknown author");
     const [loading, setLoading] = useState(true);
 
     async function addToLibrary(status) {
@@ -45,7 +46,7 @@ function BookDetails() {
                     userId: user.$id,
                     bookId: bookId,
                     title: book.title,
-                    author: "Unknown Author",
+                    author: author,
                     coverId: coverId || null,
                     status: status,
                     rating: null,
@@ -73,6 +74,16 @@ function BookDetails() {
                 const data = await response.json();
                 console.log("Book details:",data);
                 setBook(data);
+                if(data.author?.length > 0) {
+                    const authorKey = data.authors[0].author.key;
+                    const authorResponse = await fetch(
+                        `https://openlibrary.org${authorKey}.json`
+                    );
+                    
+                    const authorData = await authorResponse.json();
+
+                    setAuthor(authorData.name);
+                }
             } catch(error) {
                 console.error("Failed to get book:",error);
             } finally {
@@ -125,6 +136,7 @@ function BookDetails() {
                     </div>
                     <div>
                         <h1 className="text-5xl font-bold">{book.title}</h1>
+                        <p className="text-lg text-stone-600 mb-2">{author}</p>
                         {description ? (
                             <p className="mt-6 text-stone-600 leading-7">{description}</p>
                         ) : (

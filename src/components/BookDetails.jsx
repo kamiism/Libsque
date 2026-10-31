@@ -9,6 +9,7 @@ function BookDetails() {
     const [author, setAuthor] = useState("Unknown author");
     const [loading, setLoading] = useState(true);
     const [rating, setRating] = useState(0);
+    const [libraryEntry, setLibraryEntry] = useState(null);
 
     async function addToLibrary(status) {
         try{
@@ -33,13 +34,13 @@ function BookDetails() {
                     {
                         status: status
                     }
-                )
+                );
+                setLibraryEntry(updated);
                 console.log("Library entry updated:",updated);
                 alert(`Status changed to ${status}`);
 
                 return;
             }
-
             const created = await databases.createDocument(
                 import.meta.env.VITE_APPWRITE_DATABASE_ID,
                 import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
@@ -48,7 +49,7 @@ function BookDetails() {
                     bookId: bookId,
                     title: book.title,
                     author: author,
-                    coverId: coverId || null,
+                    coverId: book?.covers?.[0] || null,
                     status: status,
                     rating: null,
                     favorite: false,
@@ -60,11 +61,12 @@ function BookDetails() {
                         Permission.delete(Role.user(user.$id)),
                     ]
             );
+            setLibraryEntry(created);
             console.log("Library Entry Created:",created);
             alert("Added to your library");
-            } catch(error){
-                console.error("Failed to update:",error);
-                alert(error.message);
+        } catch(error){
+            console.error("Failed to update:",error);
+            alert(error.message);
         }
     }
 
@@ -72,8 +74,8 @@ function BookDetails() {
         try {
             const user = await account.get();
             const existing = await databases.listDocuments(
-            import.meta.env.VITE_APPWRITE_DATABASE_ID,
-            import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
+                import.meta.env.VITE_APPWRITE_DATABASE_ID,
+                import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
             [
                 Query.equal("userId", user.$id),
                 Query.equal("bookId", bookId),
@@ -84,7 +86,7 @@ function BookDetails() {
             return;
             }
             const document = existing.documents[0];
-            await databases.updateDocument(
+            const updated =     await databases.updateDocument(
             import.meta.env.VITE_APPWRITE_DATABASE_ID,
             import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
             document.$id,
@@ -92,6 +94,7 @@ function BookDetails() {
                 rating: newRating,
             }
             );
+            setLibraryEntry(updated);
             setRating(newRating);
         } catch (error) {
             console.error("Rating failed:", error);
@@ -100,13 +103,38 @@ function BookDetails() {
     }
 
     useEffect(() => {
+    async function loadLibraryEntry() {
+        try{
+            const user = await account.get();
+            const result = await databases.listDocuments(
+                import.meta.env.VITE_APPWRITE_DATABASE_ID,
+                import.meta.env.VITE_APPWRITE_LIBRARY_COLLECTION_ID,
+                [
+                    Query.equal("userId",user.$id),
+                    Query.equal("bookId",bookId),
+                ]  
+            );
+            if(result.documents.length > 0) {
+                const entry = result.documents[0];
+
+                setLibraryEntry(entry);
+                setRating(entry.rating || 0);
+            } else {
+                setLibraryEntry(null);
+                setRating(0);
+            }
+        } catch(error) {
+            console.error("Cannot load library entry:",error)
+        }
+    }
+
         async function getBook() {
             try{
                 const response = await fetch(`https://openlibrary.org/works/${bookId}.json`);
                 const data = await response.json();
                 console.log("Book details:",data);
                 setBook(data);
-                if(data.author?.length > 0) {
+                if(data.authors?.length > 0) {
                     const authorKey = data.authors[0].author.key;
                     const authorResponse = await fetch(
                         `https://openlibrary.org${authorKey}.json`
@@ -123,6 +151,7 @@ function BookDetails() {
             }
         }
         getBook();
+        loadLibraryEntry();
     },[bookId]);
 
     if(loading) {
@@ -174,16 +203,39 @@ function BookDetails() {
                         ) : (
                             <p className="mt-6 text-stone-400">No description available.</p>
                         )}
+                        {libraryEntry && (
+                            <p className="mb-3 text-sm text-stone-500">
+                                Currently: {libraryEntry.status.replaceAll("_", " ")}
+                            </p>
+                        )}
                         <div className="flex flex-wrap gap-3 mt-8">
                             <button 
                             onClick={() => addToLibrary("want_to_read")}
-                            className="border border-black px-5 py-3 rounded-lg cursor-pointer">Want to Read</button>
+                            className={`px-4 py-2 rounded-lg cursor-pointer ${
+                                libraryEntry?.status === "want_to_read"
+                                ? "bg-black text-white"
+                                : "border border-stone-300"
+                            }`}>
+                                Want to Read
+                            </button>
                             <button 
                             onClick={() => addToLibrary("reading")}
-                            className="border border-black px-5 py-3 rounded-lg cursor-pointer">Reading</button>
+                            className={`px-4 py-2 rounded-lg cursor-pointer ${
+                                libraryEntry?.status === "reading"
+                                ? "bg-black text-white"
+                                : "border border-stone-300"
+                            }`}>
+                                Reading
+                            </button>
                             <button 
                             onClick={() => addToLibrary("read")}
-                            className="bg-black text-white px-5 py-3 rounded-lg cursor-pointer">Read</button>
+                            className={`px-4 py-2 rounded-lg cursor-pointer ${
+                                libraryEntry?.status === "read"
+                                ? "bg-black text-white"
+                                : "border border-stone-300"
+                            }`}>
+                                Read
+                            </button>
                         </div>
                         <div className="mt-6">
                             <p className="font-semibold mb-2">Your rating</p>

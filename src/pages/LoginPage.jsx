@@ -2,10 +2,11 @@ import { ID } from "appwrite";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { account } from "../appwrite/config";
+import { useAuth } from "../context/AuthContext";
 
 function Auth() {
   const [isLogin, setIsLogin] = useState(true);
-
+  const { setUser } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,6 +29,9 @@ function Auth() {
         password: password,
       });
 
+      const currentUser = await account.get();
+      setUser(currentUser);
+
       navigate("/");
     } catch (error) {
       console.error("Signup failed:", error);
@@ -43,6 +47,9 @@ function Auth() {
         email: email,
         password: password,
       });
+      
+      const currentUser = await account.get();
+      setUser(currentUser);
 
       navigate("/");
     } catch (error) {

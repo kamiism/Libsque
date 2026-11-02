@@ -10,7 +10,7 @@ function Navbar() {
       await account.deleteSession("current");
       setUser(null);
     } catch (error) {
-      console.error("Logout failed:",error)
+      console.error("Logout failed:", error);
     }
   }
 
@@ -29,33 +29,37 @@ function Navbar() {
         >
           Search
         </Link>
+        <Link
+          to="/feed"
+          className="hover:underline"
+        >
+          Feed
+        </Link>
+        <Link
+          to="/library"
+          className="hover:underline"
+        >
+          My Library
+        </Link>
+        <Link
+          to="/profile"
+          className="hover:underline"
+        >
+          Profile
+        </Link>
         {!authLoading && (
-          <>
-            {user ? (
-              <>
-                <Link
-                  to="/library"
-                  className="hover:underline"
-                >
-                  My Library
-                </Link>
-                <Link
-                  to="/profile"
-                  className="hover:underline"
-                >
-                  Profile
-                </Link>
-                <button onClick={handleLogout} className="hover:underline cursor-pointer">Logout</button>
-              </>
-            ) :(
-              <Link
-                to="/login"
-                className="hover:underline"
-              >
-                Sign In
-              </Link>
-            )}
-          </>
+          user ? (
+            <button onClick={handleLogout} className="hover:underline cursor-pointer">
+              Logout
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              className="hover:underline"
+            >
+              Sign In
+            </Link>
+          )
         )}
       </div>
     </nav>

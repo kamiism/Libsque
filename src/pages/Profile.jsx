@@ -2,6 +2,7 @@ import { ID, Query } from "appwrite";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { account, databases } from "../appwrite/config";
+import { calculateReaderDna } from "../utils/readerDna";
 
 function Profile() {
     const [profile, setProfile] = useState(null);
@@ -11,6 +12,7 @@ function Profile() {
     const [bio, setBio] = useState("");
     const [editing, setEditing] = useState(false);
     const [library, setLibrary] = useState([]);
+    const readerDna = calculateReaderDna(library);
 
     useEffect(() => {
         async function loadProfile() {
@@ -204,6 +206,49 @@ function Profile() {
                                 <p className="text-sm text-stone-500">Want to Read</p>
                             </div>
                         </div>
+                        <div className="mt-8">
+                            <h2 className="text-2xl font-bold mb-4">Reader DNA</h2>
+                            <h3 className="font-semibold mb-2">Genres</h3>
+                            <div className="space-y-2">
+                                {Object.entries(readerDna.genres)
+                                .sort((a, b) => b[1] - a[1])
+                                .slice(0, 5)
+                                .map(([genre, score]) => (
+                                    <div key={genre}>
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span>{genre}</span>
+                                        <span>{score}%</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-gray-200 rounded">
+                                        <div
+                                        className="h-2 bg-black rounded"
+                                        style={{ width: `${score}%` }}
+                                        />
+                                    </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="space-y-2">
+                                {Object.entries(readerDna.themes)
+                                    .sort((a, b) => b[1] - a[1])
+                                    .slice(0, 5)
+                                    .map(([theme, score]) => (
+                                    <div key={theme}>
+                                        <div className="flex justify-between text-sm mb-1">
+                                        <span>{theme}</span>
+                                        <span>{score}%</span>
+                                        </div>
+
+                                        <div className="w-full h-2 bg-gray-200 rounded">
+                                        <div
+                                            className="h-2 bg-black rounded"
+                                            style={{ width: `${score}%` }}
+                                        />
+                                        </div>
+                                    </div>
+                                    ))}
+                            </div>
+                            </div>
                         {favorites.length > 0 && (
                             <div className="mb-10">
                                 <h3 className="text-2xl font-bold mb-5">Favorite Books</h3>

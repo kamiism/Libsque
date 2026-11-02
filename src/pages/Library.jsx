@@ -38,6 +38,7 @@ function BookCard({book}) {
 function Library() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     async function getLibrary() {
       try {
@@ -81,7 +82,7 @@ function Library() {
     );
   }
   return (
-    <div className="min-h-screen bg-stone-100 p-10">
+    <div className="min-h-screen bg-stone-100 p-10">    
       <h1 className="text-4xl font-bold mb-8">
         My Library
       </h1>

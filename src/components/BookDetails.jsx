@@ -2,6 +2,7 @@ import { ID, Permission, Query, Role } from "appwrite";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { account, databases } from "../appwrite/config";
+import { normalizeSubjects } from "../utils/subjectNormalizer";
 
 function BookDetails() {
     const {bookId} = useParams();
@@ -11,6 +12,10 @@ function BookDetails() {
     const [rating, setRating] = useState(0);
     const [libraryEntry, setLibraryEntry] = useState(null);
     const [progress, setProgress] = useState(0);
+    const [tasteData, setTasteData] = useState({
+        genres: [],
+        themes: []
+    });
 
     async function addToLibrary(status) {
         try{
@@ -55,6 +60,8 @@ function BookDetails() {
                     rating: null,
                     favorite: false,
                     progress: 0,
+                    genres: tasteData.genres,
+                    themes: tasteData.themes
                 }, 
                     [
                         Permission.read(Role.user(user.$id)),
@@ -181,6 +188,9 @@ function BookDetails() {
                 const data = await response.json();
                 console.log("Book details:",data);
                 setBook(data);
+                const normalizedTaste = normalizeSubjects(data.subjects);
+                console.log("Normalized taste:", normalizedTaste);
+                setTasteData(normalizedTaste);
                 if(data.authors?.length > 0) {
                     const authorKey = data.authors[0].author.key;
                     const authorResponse = await fetch(
@@ -216,9 +226,7 @@ function BookDetails() {
     }
 
     const description = typeof book.description === "string" ? book.description : book.description?.value;
-
     const coverId = book.covers?.[0];
-
     return (
         <div className="min-h-screen bg-stone-100">
             <nav className="p-8">

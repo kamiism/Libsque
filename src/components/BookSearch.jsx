@@ -36,12 +36,6 @@ function BookSearch() {
     return(
         <div className="min-h-screen bg-stone-100 p-10">
             <h1 className="text-4xl font-bold mb-8">LIBSQUE</h1>
-            <Link
-            to="/login"
-            className="bg-black text-white px-5 py-2 rounded-lg no-underline"
-            >
-                Sign In
-            </Link>
             <form onSubmit={searchBooks} className="flex gap-2 max-w-xl mb-10">
                 <input 
                 type="text" 

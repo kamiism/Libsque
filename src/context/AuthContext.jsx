@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
       try {
         const currentUser = await account.get();
         setUser(currentUser);
-      } catch (error) {
+      } catch {
         setUser(null);
       } finally {
         setAuthLoading(false);
@@ -32,6 +32,7 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   return useContext(AuthContext);
 }

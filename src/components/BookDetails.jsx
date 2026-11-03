@@ -16,6 +16,7 @@ function BookDetails() {
         genres: [],
         themes: []
     });
+    const [readableBook, setReadableBook] = useState(null);
 
     async function addToLibrary(status) {
         try{
@@ -182,27 +183,104 @@ function BookDetails() {
         }
     }
 
+        async function checkReadableEdition(bookTitle = "") {
+            setReadableBook(null);
+            try {
+                const searchRes = await fetch(
+                    `https://openlibrary.org/search.json?q=key:%2Fworks/${bookId}&fields=key,title,ia,has_fulltext,ebook_access`
+                );
+                const searchData = await searchRes.json();
+                const doc = searchData.docs?.[0];
+                if (doc?.ia?.length > 0) {
+                    const cleanTitle = (bookTitle || doc.title || "")
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]/g, "");
+                    const bestIa =
+                        (cleanTitle.length > 3
+                            ? doc.ia.find((id) => id.toLowerCase().includes(cleanTitle))
+                            : null) ||
+                        doc.ia.find(
+                            (id) =>
+                                !id.startsWith("isbn_") &&
+                                !id.startsWith("bwb_") &&
+                                !id.startsWith("unset")
+                        ) ||
+                        doc.ia[0];
+
+                    if (bestIa) {
+                        setReadableBook({
+                            archiveId: bestIa,
+                        });
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.warn("Direct IA search failed, falling back to editions:", err);
+            }
+
+            try {
+                const editionsResponse = await fetch(
+                    `https://openlibrary.org/works/${bookId}/editions.json?limit=10`
+                );
+                const editionsData = await editionsResponse.json();
+                for (const edition of editionsData.entries || []) {
+                    try {
+                        const editionId = edition.key.replace("/books/", "");
+                        const readResponse = await fetch(
+                            `https://openlibrary.org/api/volumes/brief/olid/${editionId}.json`
+                        );
+                        const readData = await readResponse.json();
+                        if (readData.items && readData.items.length > 0) {
+                            const streamItem = readData.items.find(
+                                (it) => it.itemURL && it.itemURL.includes("/stream/")
+                            );
+                            if (streamItem) {
+                                const rawArchiveId = streamItem.itemURL.split("/stream/")[1];
+                                const archiveId = rawArchiveId
+                                    ? rawArchiveId.split(/[#?]/)[0]
+                                    : null;
+                                if (archiveId) {
+                                    setReadableBook({
+                                        editionId: editionId,
+                                        archiveId: archiveId,
+                                        item: streamItem,
+                                    });
+                                    break;
+                                }
+                            }
+                        }
+                    } catch {
+                        // continue checking next edition
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to check readable edition:", err);
+            }
+        }
+
         async function getBook() {
-            try{
+            try {
                 const response = await fetch(`https://openlibrary.org/works/${bookId}.json`);
                 const data = await response.json();
-                console.log("Book details:",data);
+                console.log("Book details:", data);
                 setBook(data);
+
                 const normalizedTaste = normalizeSubjects(data.subjects);
                 console.log("Normalized taste:", normalizedTaste);
                 setTasteData(normalizedTaste);
-                if(data.authors?.length > 0) {
+
+                if (data.authors?.length > 0) {
                     const authorKey = data.authors[0].author.key;
                     const authorResponse = await fetch(
                         `https://openlibrary.org${authorKey}.json`
                     );
-                    
                     const authorData = await authorResponse.json();
-
                     setAuthor(authorData.name);
                 }
-            } catch(error) {
-                console.error("Failed to get book:",error);
+
+                checkReadableEdition(data.title);
+            } catch (error) {
+                console.error("Failed to get book:", error);
             } finally {
                 setLoading(false);
             }
@@ -292,6 +370,14 @@ function BookDetails() {
                                 Read
                             </button>
                         </div>
+                        {readableBook && (
+                           <Link
+                                to={`/read/${readableBook.archiveId}`}
+                                className="inline-block border px-4 py-2 rounded mt-4"
+                           >
+                                Read Book
+                           </Link>
+                        )}
                         <div className="mt-6">
                             <p className="font-semibold mb-2">Your rating</p>
                             <div className="flex gap-1">

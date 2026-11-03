@@ -8,6 +8,7 @@ import Library from "./pages/Library";
 import Auth from "./pages/LoginPage";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
+import Reader from "./pages/Reader";
 
 function App() {
   return (
@@ -19,6 +20,14 @@ function App() {
             <Profile />
           </ProtectedRoute>
           } 
+        />
+        <Route 
+          path="/read/:archiveId"
+          element={
+            <ProtectedRoute>
+              <Reader />
+            </ProtectedRoute>
+          }
         />
         <Route path="/" element={<BookSearch />} />
         <Route 

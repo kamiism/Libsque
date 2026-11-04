@@ -17,6 +17,7 @@ function BookDetails() {
         themes: []
     });
     const [readableBook, setReadableBook] = useState(null);
+    const [googleBook, setGoogleBook] = useState(null);
 
     async function addToLibrary(status) {
         try{
@@ -183,80 +184,174 @@ function BookDetails() {
         }
     }
 
+    async function isArchivePublic(archiveId){
+        try{
+            const response = await fetch(
+                `https://archive.org/metadata/${encodeURIComponent(archiveId)}`
+            )
+            if(!response.ok) return false;
+            const data = await response.json();
+            if(data.metadata?.["access-restricted-item"] === "true") {
+                return false;
+            }
+            const publicFiles = (data.files || []).filter(
+                (file) => 
+                    file.private !== "true" && 
+                    ["EPUB", "Text PDF", "DjVu"].includes(file.format)
+            )
+
+            return publicFiles.length > 0;
+        } catch (error) {
+            console.error("Archive verification failed:",error);
+            return false;
+        }
+    }
+
         async function checkReadableEdition(bookTitle = "") {
             setReadableBook(null);
+            setGoogleBook(null);
+            let isPublic = false;
             try {
                 const searchRes = await fetch(
                     `https://openlibrary.org/search.json?q=key:%2Fworks/${bookId}&fields=key,title,ia,has_fulltext,ebook_access`
                 );
                 const searchData = await searchRes.json();
                 const doc = searchData.docs?.[0];
-                if (doc?.ia?.length > 0) {
-                    const cleanTitle = (bookTitle || doc.title || "")
-                        .toLowerCase()
-                        .replace(/[^a-z0-9]/g, "");
-                    const bestIa =
-                        (cleanTitle.length > 3
-                            ? doc.ia.find((id) => id.toLowerCase().includes(cleanTitle))
-                            : null) ||
-                        doc.ia.find(
-                            (id) =>
-                                !id.startsWith("isbn_") &&
-                                !id.startsWith("bwb_") &&
-                                !id.startsWith("unset")
-                        ) ||
-                        doc.ia[0];
-
-                    if (bestIa) {
-                        setReadableBook({
-                            archiveId: bestIa,
-                        });
-                        return;
+                isPublic = doc?.ebook_access === "public";
+                console.log("Open Library availability:",{
+                    title: doc?.title,
+                    hasFulltext: doc?.has_fulltext,
+                    ebookAccess: doc?.ebook_access,
+                    archiveIds: doc?.ia
+                })
+                if (doc?.ebook_access === "public" && doc?.ia?.length > 0) {
+                    let foundPublic = false;
+                    for(const archiveId of doc.ia.slice(0,10)){
+                        const publicAccess = await isArchivePublic(archiveId);
+                        console.log("Checking Archive:",archiveId, publicAccess);
+                        if(publicAccess) {
+                            setReadableBook({
+                                archiveId: archiveId
+                            })
+                            foundPublic = true;
+                            break;
+                        }
+                    }
+                    if(!foundPublic){
+                        console.log("No Public Copy Found");
                     }
                 }
             } catch (err) {
                 console.warn("Direct IA search failed, falling back to editions:", err);
             }
 
-            try {
-                const editionsResponse = await fetch(
-                    `https://openlibrary.org/works/${bookId}/editions.json?limit=10`
-                );
-                const editionsData = await editionsResponse.json();
-                for (const edition of editionsData.entries || []) {
-                    try {
-                        const editionId = edition.key.replace("/books/", "");
-                        const readResponse = await fetch(
-                            `https://openlibrary.org/api/volumes/brief/olid/${editionId}.json`
-                        );
-                        const readData = await readResponse.json();
-                        if (readData.items && readData.items.length > 0) {
-                            const streamItem = readData.items.find(
-                                (it) => it.itemURL && it.itemURL.includes("/stream/")
+            if(isPublic) {
+                try {
+                    const editionsResponse = await fetch(
+                        `https://openlibrary.org/works/${bookId}/editions.json?limit=10`
+                    );
+                    const editionsData = await editionsResponse.json();
+                    for (const edition of editionsData.entries || []) {
+                        try {
+                            const editionId = edition.key.replace("/books/", "");
+                            const readResponse = await fetch(
+                                `https://openlibrary.org/api/volumes/brief/olid/${editionId}.json`
                             );
-                            if (streamItem) {
-                                const rawArchiveId = streamItem.itemURL.split("/stream/")[1];
-                                const archiveId = rawArchiveId
-                                    ? rawArchiveId.split(/[#?]/)[0]
-                                    : null;
-                                if (archiveId) {
-                                    setReadableBook({
-                                        editionId: editionId,
-                                        archiveId: archiveId,
-                                        item: streamItem,
-                                    });
-                                    break;
+                            const readData = await readResponse.json();
+                            if (readData.items && readData.items.length > 0) {
+                                const streamItem = readData.items.find(
+                                    (it) => it.itemURL && it.itemURL.includes("/stream/")
+                                );
+                                if (streamItem) {
+                                    const rawArchiveId = streamItem.itemURL.split("/stream/")[1];
+                                    const archiveId = rawArchiveId
+                                        ? rawArchiveId.split(/[#?]/)[0]
+                                        : null;
+                                    if (archiveId) {
+                                        const publicAccess = await isArchivePublic(archiveId);
+                                        if(streamItem.status === "full access" && publicAccess) {
+                                            setReadableBook({
+                                                editionId: editionId,
+                                                archiveId: archiveId,
+                                                item: streamItem,
+                                            });
+                                            break;
+                                        }
+                                    }
                                 }
                             }
+                        } catch(error) {
+                            console.warn("Edition check failed:",error)
                         }
-                    } catch {
-                        // continue checking next edition
                     }
+                } catch (err) {
+                    console.error("Failed to check readable edition:", err);
                 }
-            } catch (err) {
-                console.error("Failed to check readable edition:", err);
             }
+            try {
+                const googleApiKey = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY;
+                const googleResponse = await fetch(
+                    `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(bookTitle)}&maxResults=5&key=${encodeURIComponent(googleApiKey)}`
+                );
+                if(!googleResponse.ok) {
+                    const errorData = await googleResponse.json();
+                    console.error("Google API error details:",errorData);
+                    throw new Error(
+                        errorData.error?.message || "Google request failed"
+                    );
+                }
+                const googleData = await googleResponse.json();
+                console.log(
+                    "Google search results:",
+                    googleData.items?.map((item) => ({
+                        title: item.volumeInfo?.title,
+                        authors : item.volumeInfo?.authors,
+                        viewability: item.accessInfo?.viewability,
+                        embeddable: item.accessInfo?.embeddable
+                    }))
+                )
+                const cleanTitle = (title) => (
+                    title || ""
+                )
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, "");
+                const readableResults = (googleData.items || []).filter(
+                    (item) =>
+                        item.accessInfo?.embeddable && (
+                            item.accessInfo?.viewability === "PARTIAL" ||
+                            item.accessInfo?.viewability === "ALL_PAGES"
+                        )
+                )
+                const embedBook = readableResults.find(
+                    (item) => 
+                        cleanTitle(item.volumeInfo?.title) === cleanTitle(bookTitle)
+                );
+                console.log("Google readable:", embedBook);
+                if(embedBook) {
+                    setGoogleBook({
+                        id: embedBook.id,
+                        viewability: embedBook.accessInfo.viewability
+                    })
+                }
+            }  catch(error) {
+                    console.error("Google Books check failed:",error);
+                }
+
+            // try {
+            //     const response = await fetch(
+            //         `/gutendex/books?search=${encodeURIComponent(bookTitle)}`
+            //     );
+            //     if(!response.ok) {
+            //         throw new Error("Gutenberg search failed");
+            //     }
+            //     const data = await response.json();
+
+            //     console.log("Results for Gutenberg:",data.results);
+            // } catch(error) {
+            //     console.error("Gutenberg error:",error);
+            // }
         }
+
 
         async function getBook() {
             try {
@@ -377,6 +472,16 @@ function BookDetails() {
                            >
                                 Read Book
                            </Link>
+                        )}
+                        {googleBook && (
+                            <Link
+                                to={`/read/google/${googleBook.id}`}
+                                className="inline-block border px-4 py-2 rounded mt-4 ml-3"
+                            >
+                                {googleBook.viewability === "ALL_PAGES" ?
+                                    "Read on Google Books" : "Google Preview"
+                                }
+                            </Link>
                         )}
                         <div className="mt-6">
                             <p className="font-semibold mb-2">Your rating</p>

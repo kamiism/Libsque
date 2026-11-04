@@ -29,6 +29,14 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route 
+          path="/read/google/:googleBookId"
+          element={
+            <ProtectedRoute>
+              <Reader />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/" element={<BookSearch />} />
         <Route 
           path="/feed"

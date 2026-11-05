@@ -18,6 +18,7 @@ function BookDetails() {
     });
     const [readableBook, setReadableBook] = useState(null);
     const [googleBook, setGoogleBook] = useState(null);
+    const [gutenbergResults, setGutenbergResults] = useState(null);
 
     async function addToLibrary(status) {
         try{
@@ -207,7 +208,7 @@ function BookDetails() {
         }
     }
 
-        async function checkReadableEdition(bookTitle = "") {
+        async function checkReadableEdition(bookTitle = "", bookAuthor="") {
             setReadableBook(null);
             setGoogleBook(null);
             let isPublic = false;
@@ -333,9 +334,39 @@ function BookDetails() {
                         viewability: embedBook.accessInfo.viewability
                     })
                 }
-            }  catch(error) {
+            }catch(error) {
                     console.error("Google Books check failed:",error);
+            }
+
+            try {
+                setGutenbergResults([]);
+                const response = await fetch(
+                    `/api/gutenberg/search?q=${encodeURIComponent(bookTitle)}`
+                );
+                if(!response.ok) {
+                    throw new Error("Gutenberg problem");
                 }
+                const results = await response.json();
+                const normalizedText = (text) => 
+                    (text || "")
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]/g, "");
+                const authorParts = bookAuthor.trim().split(/\s+/);
+                const authorLastName = authorParts[authorParts.length -1] || "";
+                const matchedBooks = results.filter((item) => {
+                    const titleMatches = 
+                        normalizedText(item.title) === normalizedText(bookTitle);
+                    const authorMacthes = authorLastName.length > 1 &&
+                        normalizedText(item.author).includes(
+                            normalizedText(authorLastName)
+                        )
+                    return titleMatches && authorMacthes;
+                })
+                console.log("Gutenberg Matches(from Local Lib):", matchedBooks);
+                setGutenbergResults(matchedBooks);
+            } catch {
+                console.error("Local search failed:", error);
+            }
 
             // try {
             //     const response = await fetch(
@@ -364,16 +395,18 @@ function BookDetails() {
                 console.log("Normalized taste:", normalizedTaste);
                 setTasteData(normalizedTaste);
 
+                let bookAuthor = "";
                 if (data.authors?.length > 0) {
                     const authorKey = data.authors[0].author.key;
                     const authorResponse = await fetch(
                         `https://openlibrary.org${authorKey}.json`
                     );
                     const authorData = await authorResponse.json();
+                    bookAuthor = authorData.name;
                     setAuthor(authorData.name);
                 }
 
-                checkReadableEdition(data.title);
+                checkReadableEdition(data.title, bookAuthor);
             } catch (error) {
                 console.error("Failed to get book:", error);
             } finally {
@@ -482,6 +515,18 @@ function BookDetails() {
                                     "Read on Google Books" : "Google Preview"
                                 }
                             </Link>
+                        )}
+                        {gutenbergResults.length > 0 && (
+                            <button
+                                onClick={() => {
+                                    navigate(
+                                        `/read/gutenberg/${gutenbergResults[0].id}?workId=${encodeURIComponent(bookId)}`
+                                    )
+                                }}
+                                className="border rounded px-4 py-2"
+                            >
+                                Read on Libsque
+                            </button>
                         )}
                         <div className="mt-6">
                             <p className="font-semibold mb-2">Your rating</p>

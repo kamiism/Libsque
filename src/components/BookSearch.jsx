@@ -14,10 +14,10 @@ const CURATED_GENRES = [
 
 const FEATURED_BOOKS = [
   {
-    id: "OL27479W",
+    id: "OL66554W",
     title: "Pride and Prejudice",
     author: "Jane Austen",
-    coverId: 8231998,
+    coverId: 14348537,
     year: 1813,
     availability: "EPUB",
   },
@@ -30,34 +30,34 @@ const FEATURED_BOOKS = [
     availability: "PDF",
   },
   {
-    id: "OL25555832W",
+    id: "OL28801875W",
     title: "Navigating the European Migration Regime",
     author: "Anna Wyss",
     coverId: null,
     year: 2022,
-    availability: "Open Access",
+    availability: "EPUB",
   },
   {
-    id: "OL103123W",
+    id: "OL450063W",
     title: "Frankenstein",
     author: "Mary Shelley",
-    coverId: 8258649,
+    coverId: 12356249,
     year: 1818,
     availability: "EPUB",
   },
   {
-    id: "OL82563W",
+    id: "OL138052W",
     title: "Alice's Adventures in Wonderland",
     author: "Lewis Carroll",
-    coverId: 8259020,
+    coverId: 10527843,
     year: 1865,
     availability: "EPUB",
   },
   {
-    id: "OL262758W",
+    id: "OL15176533W",
     title: "The Metamorphosis",
     author: "Franz Kafka",
-    coverId: 8235113,
+    coverId: 6889547,
     year: 1915,
     availability: "EPUB",
   },
@@ -96,6 +96,8 @@ function getBadgeStyle(availability) {
       return "bg-[#457B9D] text-white";
     case "Open Access":
       return "bg-[#1D3557] text-white";
+    case "Borrow":
+      return "bg-[#457B9D]/85 text-white";
     case "Preview":
       return "bg-[#A8DADB] text-[#1D3557]";
     default:
@@ -122,6 +124,8 @@ function BookSearch() {
         let availability = null;
         if (book.ebook_access === "public" || book.public_scan_b) {
           availability = "Open Access";
+        } else if (book.ebook_access === "borrowable") {
+          availability = "Borrow";
         } else if (book.has_fulltext) {
           availability = "Preview";
         }

@@ -1,0 +1,93 @@
+{
+  "preferences": {
+    "6aed806c0000eebfc713": {
+      "userId": "6aed806c0000eebfc713",
+      "discoveryOptIn": true,
+      "intent": "friends",
+      "adultConfirmed": false,
+      "adultConfirmedAt": null,
+      "bio": "",
+      "displayName": "Ariolas",
+      "username": "",
+      "selectedFavorites": [],
+      "readerDna": {
+        "genres": {},
+        "themes": {}
+      },
+      "updatedAt": "2026-11-06T09:50:55.094Z"
+    },
+    "6ae82af2003c3c5fea4c": {
+      "userId": "6ae82af2003c3c5fea4c",
+      "discoveryOptIn": true,
+      "intent": "friends",
+      "adultConfirmed": false,
+      "adultConfirmedAt": null,
+      "bio": "I goonalot",
+      "displayName": "sylus",
+      "username": "Sylus",
+      "selectedFavorites": [
+        {
+          "id": "OL24178205W",
+          "title": "The Love Hypothesis",
+          "author": "Ali Hazelwood",
+          "coverId": 10601402
+        },
+        {
+          "id": "OL18758758W",
+          "title": "Yaoi hentai",
+          "author": "Yamila Abraham",
+          "coverId": 6287663
+        },
+        {
+          "id": "OL498556W",
+          "title": "Metamorphosis",
+          "author": "Franz Kafka",
+          "coverId": 12820198
+        },
+        {
+          "id": "OL24390422W",
+          "title": "Twisted Love",
+          "author": "Ana Huang",
+          "coverId": 12940491
+        },
+        {
+          "id": "OL138052W",
+          "title": "Alice's Adventures in Wonderland",
+          "author": "Lewis Carroll",
+          "coverId": 10527843
+        }
+      ],
+      "readerDna": {
+        "genres": {
+          "Romance": 100,
+          "Contemporary Romance": 95,
+          "Young Adult": 63,
+          "Fantasy": 26,
+          "Psychological Fiction": 32,
+          "Classics": 26,
+          "Literary Fiction": 16,
+          "Historical Fiction": 16,
+          "Dark Romance": 11,
+          "Humor": 21,
+          "Science Fiction": 11,
+          "History": 21,
+          "Comedy": 11,
+          "Nonfiction": 11
+        },
+        "themes": {
+          "Vampires": 100,
+          "School Life": 100,
+          "Transformation": 30,
+          "Social Problems": 30,
+          "Alienation": 30,
+          "Family": 30
+        }
+      },
+      "updatedAt": "2026-11-06T10:35:22.304Z"
+    }
+  },
+  "interests": {},
+  "matches": {},
+  "blocks": {},
+  "reports": []
+}

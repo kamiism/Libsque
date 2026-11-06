@@ -46,9 +46,23 @@ function isRestrictedFlag(val) {
   return false;
 }
 
+export async function fetchWithTimeout(url, timeoutMs = 3500) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function checkIsArchiveItemReadable(archiveId) {
   try {
-    const res = await fetch(`https://archive.org/metadata/${encodeURIComponent(archiveId)}`);
+    const res = await fetchWithTimeout(
+      `https://archive.org/metadata/${encodeURIComponent(archiveId)}`,
+      2500
+    );
     if (!res.ok) return false;
     const data = await res.json();
     const meta = data.metadata || {};
@@ -87,140 +101,156 @@ export async function resolveBookAvailability({ workId, title, author = "", isbn
   };
 
   // 1. DOAB: Backend searchable index lookup (ISBN + Title/Author)
-  try {
-    const candidateIsbns = [...isbns];
-    if (workId && candidateIsbns.length === 0) {
-      try {
-        const editionsRes = await fetch(
-          `https://openlibrary.org/works/${encodeURIComponent(workId)}/editions.json?limit=10`
-        );
-        if (editionsRes.ok) {
-          const edData = await editionsRes.json();
-          (edData.entries || []).forEach((ed) => {
-            if (ed.isbn_13) candidateIsbns.push(...ed.isbn_13);
-            if (ed.isbn_10) candidateIsbns.push(...ed.isbn_10);
-          });
+  const resolveDoab = async () => {
+    try {
+      const candidateIsbns = [...isbns];
+      const queryParams = new URLSearchParams();
+      if (candidateIsbns.length > 0) {
+        queryParams.set("isbn", candidateIsbns.slice(0, 15).join(","));
+      }
+      if (title) queryParams.set("title", title);
+      if (author) queryParams.set("author", author);
+
+      const doabRes = await fetchWithTimeout(`/api/doab/match?${queryParams.toString()}`, 3500);
+      if (doabRes.ok) {
+        const doabData = await doabRes.json();
+        if (doabData.matched && doabData.item) {
+          const item = doabData.item;
+          return {
+            title: item.title,
+            format: item.format,
+            url: item.url,
+            license: item.license,
+            publisher: item.publisher,
+            author: item.author,
+            matchType: doabData.matchType,
+            confidence: doabData.confidence,
+            label: `Read on DOAB (Open Access ${item.format.toUpperCase()})`,
+            access: "full",
+          };
         }
-      } catch {
-        // Fallback to title/author matching if editions lookup fails
       }
+    } catch (err) {
+      console.warn("DOAB resolver error:", err.message);
     }
+    return null;
+  };
 
-    const queryParams = new URLSearchParams();
-    if (candidateIsbns.length > 0) {
-      queryParams.set("isbn", candidateIsbns.slice(0, 15).join(","));
-    }
-    if (title) queryParams.set("title", title);
-    if (author) queryParams.set("author", author);
-
-    const doabRes = await fetch(`/api/doab/match?${queryParams.toString()}`);
-    if (doabRes.ok) {
-      const doabData = await doabRes.json();
-      if (doabData.matched && doabData.item) {
-        const item = doabData.item;
-        results.doab = {
-          title: item.title,
-          format: item.format,
-          url: item.url,
-          license: item.license,
-          publisher: item.publisher,
-          author: item.author,
-          matchType: doabData.matchType,
-          confidence: doabData.confidence,
-          label: `Read on DOAB (Open Access ${item.format.toUpperCase()})`,
-          access: "full",
-        };
-      }
-    }
-  } catch (err) {
-    console.warn("DOAB resolver error:", err.message);
-  }
-
-  // 1. Project Gutenberg: Local catalog search and verified EPUB / HTML
-  try {
-    const gRes = await fetch(`/api/gutenberg/search?q=${encodeURIComponent(title)}`);
-    if (gRes.ok) {
+  // 2. Project Gutenberg: Local catalog search and verified EPUB
+  const resolveGutenberg = async () => {
+    try {
+      const strippedTitle = title
+        .split(/[:;–—-]|\s+and\s+other\s+/i)[0]
+        .replace(/^(the|a|an)\s+/i, "")
+        .trim();
+      const gRes = await fetchWithTimeout(
+        `/api/gutenberg/search?q=${encodeURIComponent(strippedTitle || title)}`,
+        3500
+      );
+      if (!gRes.ok) return null;
       const matches = await gRes.json();
+      const targetPrimaryClean = cleanAlphanumeric(strippedTitle);
+      const strippedPrimaryClean = cleanAlphanumeric(strippedTitle);
+
       const candidate = matches.find((item) => {
-        const titleClean = cleanAlphanumeric(item.title);
+        const itemClean = cleanAlphanumeric(item.title);
+        const itemPrimaryClean = cleanAlphanumeric((item.title || "").split(/[:;–—-]/)[0]);
+
         const titleMatch =
-          titleClean === targetTitleClean ||
-          titleClean.includes(targetTitleClean) ||
-          targetTitleClean.includes(titleClean);
-        const authorMatch =
-          authorLastName.length > 1
-            ? cleanAlphanumeric(item.author).includes(cleanAlphanumeric(authorLastName))
-            : true;
-        return titleMatch && authorMatch;
+          itemClean === targetTitleClean ||
+          itemClean === strippedPrimaryClean ||
+          itemPrimaryClean === targetTitleClean ||
+          itemPrimaryClean === strippedPrimaryClean ||
+          itemPrimaryClean === targetPrimaryClean ||
+          (targetTitleClean.length > 5 && itemPrimaryClean === targetTitleClean) ||
+          (targetPrimaryClean.length > 5 && itemPrimaryClean === targetPrimaryClean) ||
+          (itemClean.length >= 6 && targetTitleClean.includes(itemClean)) ||
+          (itemClean.length >= 6 && strippedPrimaryClean.includes(itemClean));
+
+        if (!titleMatch) return false;
+
+        if (authorLastName.length > 2) {
+          const itemAuthor = cleanAlphanumeric(item.author || "");
+          const matchAuthor = itemAuthor.includes(cleanAlphanumeric(authorLastName));
+          if (!matchAuthor) return false;
+        }
+
+        return true;
       });
 
       if (candidate) {
-        const epubRes = await fetch(`/api/gutenberg/${candidate.id}/epub`);
+        const epubRes = await fetchWithTimeout(`/api/gutenberg/${candidate.id}/epub`, 10000);
         if (epubRes.ok) {
           const epubData = await epubRes.json();
           if (epubData.available) {
-            results.gutenberg = {
+            return {
               id: candidate.id,
               mode: "epub",
               title: candidate.title,
               access: "full",
-              label: "Read on Libsque (EPUB)",
+              format: "epub",
+              label: "Read EPUB",
             };
           } else if (Number(candidate.id) === 1342) {
-            results.gutenberg = {
+            return {
               id: candidate.id,
               mode: "html",
               title: candidate.title,
               access: "full",
-              label: "Read on Libsque (HTML)",
+              format: "html",
+              label: "Read HTML",
             };
           }
         }
       }
+    } catch (err) {
+      console.warn("Gutenberg resolver error:", err.message);
     }
-  } catch (err) {
-    console.warn("Gutenberg resolver error:", err.message);
-  }
+    return null;
+  };
 
-  // 2. Open Library / Internet Archive: Rights-cleared public stream verification
-  if (workId) {
+  // 3. Open Library / Internet Archive: Rights-cleared public stream verification
+  const resolveArchive = async () => {
+    if (!workId) return null;
     try {
-      const olRes = await fetch(
+      const olRes = await fetchWithTimeout(
         `https://openlibrary.org/search.json?q=key:%2Fworks/${encodeURIComponent(
           workId
-        )}&fields=key,title,ia,has_fulltext,ebook_access`
+        )}&fields=key,title,ia,has_fulltext,ebook_access`,
+        3500
       );
-      if (olRes.ok) {
-        const olData = await olRes.json();
-        const doc = olData.docs?.[0];
-        const iaList = doc?.ia || [];
+      if (!olRes.ok) return null;
+      const olData = await olRes.json();
+      const doc = olData.docs?.[0];
+      const iaList = doc?.ia || [];
 
-        for (const archiveId of iaList.slice(0, 10)) {
-          const isReadable = await checkIsArchiveItemReadable(archiveId);
-          if (isReadable) {
-            results.archive = {
-              archiveId,
-              access: "full",
-              label: "Read on Internet Archive",
-            };
-            break;
-          }
+      for (const archiveId of iaList.slice(0, 3)) {
+        const isReadable = await checkIsArchiveItemReadable(archiveId);
+        if (isReadable) {
+          return {
+            archiveId,
+            access: "full",
+            label: "Read on Internet Archive",
+          };
         }
       }
     } catch (err) {
       console.warn("Archive resolver error:", err.message);
     }
-  }
+    return null;
+  };
 
-  // 3. Google Books: Embeddable viewability verification (FULL vs PARTIAL preview)
-  try {
-    const apiKey = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY;
-    const gbooksRes = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(
-        title
-      )}&maxResults=5&key=${encodeURIComponent(apiKey)}`
-    );
-    if (gbooksRes.ok) {
+  // 4. Google Books: Embeddable viewability verification (FULL vs PARTIAL preview)
+  const resolveGoogle = async () => {
+    try {
+      const apiKey = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY;
+      const gbooksRes = await fetchWithTimeout(
+        `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(
+          title
+        )}&maxResults=5&key=${encodeURIComponent(apiKey)}`,
+        3500
+      );
+      if (!gbooksRes.ok) return null;
       const gbooksData = await gbooksRes.json();
       const embeddable = (gbooksData.items || []).filter(
         (item) =>
@@ -229,15 +259,23 @@ export async function resolveBookAvailability({ workId, title, author = "", isbn
             item.accessInfo?.viewability === "ALL_PAGES")
       );
       const matched = embeddable.find((item) => {
-        const t = cleanAlphanumeric(item.volumeInfo?.title);
-        return (
-          t === targetTitleClean ||
-          t.includes(targetTitleClean) ||
-          targetTitleClean.includes(t)
-        );
+        const t = cleanAlphanumeric(item.volumeInfo?.title || "");
+        const itemAuthors = (item.volumeInfo?.authors || []).map(cleanAlphanumeric);
+        const authorMatch =
+          authorLastName.length > 2
+            ? itemAuthors.some((a) => a.includes(cleanAlphanumeric(authorLastName)))
+            : true;
+
+        const exactTitle = t === targetTitleClean;
+        const closeTitle =
+          t.length >= 6 &&
+          targetTitleClean.length >= 6 &&
+          (t.startsWith(targetTitleClean) || targetTitleClean.startsWith(t));
+
+        return (exactTitle || closeTitle) && authorMatch;
       });
       if (matched) {
-        results.google = {
+        return {
           id: matched.id,
           viewability: matched.accessInfo.viewability,
           access: matched.accessInfo.viewability === "ALL_PAGES" ? "full" : "preview",
@@ -247,21 +285,24 @@ export async function resolveBookAvailability({ workId, title, author = "", isbn
               : "Google Books Preview",
         };
       }
+    } catch (err) {
+      console.warn("Google Books resolver error:", err.message);
     }
-  } catch (err) {
-    console.warn("Google Books resolver error:", err.message);
-  }
+    return null;
+  };
 
-  // 4. LibriVox: Rights-cleared public domain audiobook discovery (via backend proxy)
-  try {
-    const lvRes = await fetch(
-      `/api/audiobooks/search?title=${encodeURIComponent(title)}`
-    );
-    if (lvRes.ok) {
+  // 5. LibriVox: Rights-cleared public domain audiobook discovery (via backend proxy)
+  const resolveLibrivox = async () => {
+    try {
+      const lvRes = await fetchWithTimeout(
+        `/api/audiobooks/search?title=${encodeURIComponent(title)}`,
+        3500
+      );
+      if (!lvRes.ok) return null;
       const lvData = await lvRes.json();
       if (lvData.books && lvData.books.length > 0) {
         const book = lvData.books[0];
-        results.librivox = {
+        return {
           id: book.id,
           title: book.title,
           totaltime: book.totaltime,
@@ -270,10 +311,27 @@ export async function resolveBookAvailability({ workId, title, author = "", isbn
           label: `Listen on LibriVox (${book.totaltime || "Audio"})`,
         };
       }
+    } catch (err) {
+      console.warn("LibriVox resolver error:", err.message);
     }
-  } catch (err) {
-    console.warn("LibriVox resolver error:", err.message);
-  }
+    return null;
+  };
+
+  // Run all provider checks in parallel
+  const [doabSettled, gutenbergSettled, archiveSettled, googleSettled, librivoxSettled] =
+    await Promise.allSettled([
+      resolveDoab(),
+      resolveGutenberg(),
+      resolveArchive(),
+      resolveGoogle(),
+      resolveLibrivox(),
+    ]);
+
+  results.doab = doabSettled.status === "fulfilled" ? doabSettled.value : null;
+  results.gutenberg = gutenbergSettled.status === "fulfilled" ? gutenbergSettled.value : null;
+  results.archive = archiveSettled.status === "fulfilled" ? archiveSettled.value : null;
+  results.google = googleSettled.status === "fulfilled" ? googleSettled.value : null;
+  results.librivox = librivoxSettled.status === "fulfilled" ? librivoxSettled.value : null;
 
   return results;
 }

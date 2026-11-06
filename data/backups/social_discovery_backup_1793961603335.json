@@ -1,0 +1,137 @@
+{
+  "preferences": {
+    "6aed806c0000eebfc713": {
+      "userId": "6aed806c0000eebfc713",
+      "discoveryOptIn": true,
+      "intent": "dating",
+      "adultConfirmed": true,
+      "adultConfirmedAt": "2026-11-06T10:39:09.530Z",
+      "bio": "Raw dogged by life and now I am sane asf",
+      "displayName": "Foid Keller",
+      "username": "FoidKiller67",
+      "selectedFavorites": [
+        {
+          "id": "OL34306660W",
+          "title": "The Ethics of Affect",
+          "author": "Patrick W Galbraith",
+          "coverId": 13156494
+        },
+        {
+          "id": "OL9840048W",
+          "title": "UROTSUKIDOJI Perfect Collection",
+          "author": "Hentai Anime",
+          "coverId": 9325327
+        },
+        {
+          "id": "OL8215661W",
+          "title": "ONE PIECE 1",
+          "author": "尾田栄一郎",
+          "coverId": 1020563
+        }
+      ],
+      "readerDna": {
+        "genres": {
+          "Adventure": 100
+        },
+        "themes": {}
+      },
+      "updatedAt": "2026-11-06T10:39:09.530Z"
+    },
+    "6ae82af2003c3c5fea4c": {
+      "userId": "6ae82af2003c3c5fea4c",
+      "discoveryOptIn": true,
+      "intent": "dating",
+      "adultConfirmed": true,
+      "adultConfirmedAt": "2026-11-06T10:38:40.172Z",
+      "bio": "I goonalot",
+      "displayName": "sylus",
+      "username": "Sylus",
+      "selectedFavorites": [
+        {
+          "id": "OL24178205W",
+          "title": "The Love Hypothesis",
+          "author": "Ali Hazelwood",
+          "coverId": 10601402
+        },
+        {
+          "id": "OL18758758W",
+          "title": "Yaoi hentai",
+          "author": "Yamila Abraham",
+          "coverId": 6287663
+        },
+        {
+          "id": "OL498556W",
+          "title": "Metamorphosis",
+          "author": "Franz Kafka",
+          "coverId": 12820198
+        },
+        {
+          "id": "OL24390422W",
+          "title": "Twisted Love",
+          "author": "Ana Huang",
+          "coverId": 12940491
+        },
+        {
+          "id": "OL138052W",
+          "title": "Alice's Adventures in Wonderland",
+          "author": "Lewis Carroll",
+          "coverId": 10527843
+        }
+      ],
+      "readerDna": {
+        "genres": {
+          "Romance": 100,
+          "Contemporary Romance": 95,
+          "Young Adult": 63,
+          "Fantasy": 26,
+          "Psychological Fiction": 32,
+          "Classics": 26,
+          "Literary Fiction": 16,
+          "Historical Fiction": 16,
+          "Dark Romance": 11,
+          "Humor": 21,
+          "Science Fiction": 11,
+          "History": 21,
+          "Comedy": 11,
+          "Nonfiction": 11
+        },
+        "themes": {
+          "Vampires": 100,
+          "School Life": 100,
+          "Transformation": 30,
+          "Social Problems": 30,
+          "Alienation": 30,
+          "Family": 30
+        }
+      },
+      "updatedAt": "2026-11-06T10:38:40.172Z"
+    }
+  },
+  "interests": {
+    "6aed806c0000eebfc713:6ae82af2003c3c5fea4c": {
+      "id": "679f0e2d-fec3-4e53-ab24-238903089942",
+      "senderId": "6aed806c0000eebfc713",
+      "targetUserId": "6ae82af2003c3c5fea4c",
+      "intent": "dating",
+      "createdAt": "2026-11-06T10:39:41.435Z"
+    },
+    "6ae82af2003c3c5fea4c:6aed806c0000eebfc713": {
+      "id": "e038f608-224c-4c71-8117-297b1d2b8805",
+      "senderId": "6ae82af2003c3c5fea4c",
+      "targetUserId": "6aed806c0000eebfc713",
+      "intent": "dating",
+      "createdAt": "2026-11-06T10:40:03.333Z"
+    }
+  },
+  "matches": {
+    "6ae82af2003c3c5fea4c:6aed806c0000eebfc713": {
+      "id": "44c2459a-5c86-45f8-a44e-446afaa34d76",
+      "user1Id": "6ae82af2003c3c5fea4c",
+      "user2Id": "6aed806c0000eebfc713",
+      "type": "dating",
+      "matchedAt": "2026-11-06T10:40:03.333Z"
+    }
+  },
+  "blocks": {},
+  "reports": []
+}

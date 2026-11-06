@@ -1,0 +1,238 @@
+{
+  "preferences": {
+    "ua_mw4sjyu49hgw": {
+      "userId": "ua_mw4sjyu49hgw",
+      "discoveryOptIn": true,
+      "intent": "both",
+      "adultConfirmed": true,
+      "adultConfirmedAt": "2026-11-06T09:47:53.476Z",
+      "bio": "Curious new reader starting my collection.",
+      "displayName": "Reader Bob",
+      "username": "bob_books",
+      "selectedFavorites": [],
+      "readerDna": {
+        "genres": {}
+      },
+      "updatedAt": "2026-11-06T09:47:54.582Z"
+    },
+    "ua_mw4sknpyju2n": {
+      "userId": "ua_mw4sknpyju2n",
+      "discoveryOptIn": true,
+      "intent": "both",
+      "adultConfirmed": true,
+      "adultConfirmedAt": "2026-11-06T09:48:25.585Z",
+      "bio": "Classics scholar exploring Victorian novels and coffee.",
+      "displayName": "Reader Alice",
+      "username": "alice_reads",
+      "selectedFavorites": [
+        {
+          "id": "OL138052W",
+          "title": "Alice's Adventures in Wonderland",
+          "author": "Lewis Carroll",
+          "coverId": null
+        },
+        {
+          "id": "OL66554W",
+          "title": "Pride and Prejudice",
+          "author": "Jane Austen",
+          "coverId": null
+        }
+      ],
+      "readerDna": {
+        "genres": {
+          "classics": 95,
+          "literature": 80,
+          "romance": 60
+        }
+      },
+      "updatedAt": "2026-11-06T09:48:25.585Z"
+    },
+    "ua_mw4sllborzbr": {
+      "userId": "ua_mw4sllborzbr",
+      "discoveryOptIn": true,
+      "intent": "both",
+      "adultConfirmed": true,
+      "adultConfirmedAt": "2026-11-06T09:49:10.800Z",
+      "bio": "Classics scholar exploring Victorian novels and coffee.",
+      "displayName": "Reader Alice",
+      "username": "alice_reads",
+      "selectedFavorites": [
+        {
+          "id": "OL138052W",
+          "title": "Alice's Adventures in Wonderland",
+          "author": "Lewis Carroll",
+          "coverId": null
+        },
+        {
+          "id": "OL66554W",
+          "title": "Pride and Prejudice",
+          "author": "Jane Austen",
+          "coverId": null
+        }
+      ],
+      "readerDna": {
+        "genres": {
+          "classics": 95,
+          "literature": 80,
+          "romance": 60
+        }
+      },
+      "updatedAt": "2026-11-06T09:49:10.800Z"
+    },
+    "umw4rak8v5p4gdk": {
+      "userId": "umw4rak8v5p4gdk",
+      "discoveryOptIn": true,
+      "intent": "both",
+      "adultConfirmed": true,
+      "adultConfirmedAt": "2026-11-06T09:54:28.835Z",
+      "bio": "Classics scholar exploring Victorian novels and dark academia.",
+      "displayName": "Reader Alice",
+      "username": "alice_reads",
+      "selectedFavorites": [
+        {
+          "id": "OL138052W",
+          "title": "Alice's Adventures in Wonderland",
+          "author": "Lewis Carroll",
+          "coverId": null
+        },
+        {
+          "id": "OL66554W",
+          "title": "Pride and Prejudice",
+          "author": "Jane Austen",
+          "coverId": null
+        }
+      ],
+      "readerDna": {
+        "genres": {
+          "classics": 95,
+          "literature": 80,
+          "romance": 60
+        }
+      },
+      "updatedAt": "2026-11-06T09:54:28.835Z"
+    },
+    "6aed806c0000eebfc713": {
+      "userId": "6aed806c0000eebfc713",
+      "discoveryOptIn": true,
+      "intent": "friends",
+      "adultConfirmed": false,
+      "adultConfirmedAt": null,
+      "bio": "",
+      "displayName": "Ariolas",
+      "username": "",
+      "selectedFavorites": [],
+      "readerDna": {
+        "genres": {},
+        "themes": {}
+      },
+      "updatedAt": "2026-11-06T09:50:55.094Z"
+    },
+    "umw4r9gz7hj3ecm": {
+      "userId": "umw4r9gz7hj3ecm",
+      "discoveryOptIn": true,
+      "intent": "both",
+      "adultConfirmed": true,
+      "adultConfirmedAt": "2026-11-06T09:54:29.044Z",
+      "bio": "New book lover starting my personal library.",
+      "displayName": "Reader Bob",
+      "username": "bob_books",
+      "selectedFavorites": [],
+      "readerDna": {
+        "genres": {},
+        "themes": {}
+      },
+      "updatedAt": "2026-11-06T09:54:29.044Z"
+    },
+    "6ae82af2003c3c5fea4c": {
+      "userId": "6ae82af2003c3c5fea4c",
+      "discoveryOptIn": true,
+      "intent": "friends",
+      "adultConfirmed": false,
+      "adultConfirmedAt": null,
+      "bio": "I goonalot",
+      "displayName": "sylus",
+      "username": "Sylus",
+      "selectedFavorites": [
+        {
+          "id": "OL24178205W",
+          "title": "The Love Hypothesis",
+          "author": "Ali Hazelwood",
+          "coverId": 10601402
+        },
+        {
+          "id": "OL18758758W",
+          "title": "Yaoi hentai",
+          "author": "Yamila Abraham",
+          "coverId": 6287663
+        },
+        {
+          "id": "OL498556W",
+          "title": "Metamorphosis",
+          "author": "Franz Kafka",
+          "coverId": 12820198
+        },
+        {
+          "id": "OL24390422W",
+          "title": "Twisted Love",
+          "author": "Ana Huang",
+          "coverId": 12940491
+        },
+        {
+          "id": "OL138052W",
+          "title": "Alice's Adventures in Wonderland",
+          "author": "Lewis Carroll",
+          "coverId": 10527843
+        }
+      ],
+      "readerDna": {
+        "genres": {
+          "Romance": 100,
+          "Contemporary Romance": 95,
+          "Young Adult": 63,
+          "Fantasy": 26,
+          "Psychological Fiction": 32,
+          "Classics": 26,
+          "Literary Fiction": 16,
+          "Historical Fiction": 16,
+          "Dark Romance": 11,
+          "Humor": 21,
+          "Science Fiction": 11,
+          "History": 21,
+          "Comedy": 11,
+          "Nonfiction": 11
+        },
+        "themes": {
+          "Vampires": 100,
+          "School Life": 100,
+          "Transformation": 30,
+          "Social Problems": 30,
+          "Alienation": 30,
+          "Family": 30
+        }
+      },
+      "updatedAt": "2026-11-06T09:59:46.783Z"
+    }
+  },
+  "interests": {
+    "6aed806c0000eebfc713:ua_mw4sjyu49hgw": {
+      "id": "8535dbac-6cf3-41ec-b9f3-722150157ff9",
+      "senderId": "6aed806c0000eebfc713",
+      "targetUserId": "ua_mw4sjyu49hgw",
+      "intent": "friends",
+      "createdAt": "2026-11-06T09:51:08.939Z"
+    }
+  },
+  "matches": {},
+  "blocks": {},
+  "reports": [
+    {
+      "id": "455b4a3c-5f71-49d5-a51d-979f23c13b6d",
+      "reporterId": "umw4rak8v5p4gdk",
+      "reportedUserId": "umw4r9gz7hj3ecm",
+      "reason": "inappropriate_content",
+      "details": "Testing report queue functionality in automated audit.",
+      "createdAt": "2026-11-06T09:54:29.076Z",
+      "status": "pending"
+    }
+  ]
+}

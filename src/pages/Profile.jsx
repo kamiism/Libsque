@@ -3,6 +3,12 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { account, databases } from "../appwrite/config";
 import { calculateReaderDna } from "../utils/readerDna";
+import {
+  getSocialPreferences,
+  updateSocialPreferences,
+  getBlockedReaders,
+  unblockReader,
+} from "../utils/socialApi";
 
 function Profile() {
   const [profile, setProfile] = useState(null);
@@ -12,6 +18,18 @@ function Profile() {
   const [bio, setBio] = useState("");
   const [editing, setEditing] = useState(false);
   const [library, setLibrary] = useState([]);
+
+  // Social discovery preferences
+  const [discoveryOptIn, setDiscoveryOptIn] = useState(false);
+  const [intent, setIntent] = useState("friends");
+  const [adultConfirmed, setAdultConfirmed] = useState(false);
+  const [selectedFavorites, setSelectedFavorites] = useState([]);
+  const [socialStats, setSocialStats] = useState({ matchesCount: 0, sentInterestsCount: 0, blockedCount: 0 });
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [savingSocial, setSavingSocial] = useState(false);
+  const [socialMessage, setSocialMessage] = useState("");
+  const [socialError, setSocialError] = useState("");
+
   const readerDna = calculateReaderDna(library);
 
   useEffect(() => {
@@ -37,6 +55,33 @@ function Profile() {
           setUsername(savedProfile.username);
           setDisplayName(savedProfile.displayName);
           setBio(savedProfile.bio || "");
+        }
+
+        // Load social discovery preferences
+        try {
+          const socialData = await getSocialPreferences();
+          if (isMounted && socialData.preferences) {
+            const p = socialData.preferences;
+            setDiscoveryOptIn(Boolean(p.discoveryOptIn));
+            setIntent(p.intent || "friends");
+            setAdultConfirmed(Boolean(p.adultConfirmed));
+            setSelectedFavorites(p.selectedFavorites || []);
+          }
+          if (isMounted && socialData.stats) {
+            setSocialStats(socialData.stats);
+          }
+        } catch {
+          // Social preferences not initialized yet
+        }
+
+        // Load blocked users
+        try {
+          const blocksData = await getBlockedReaders();
+          if (isMounted && blocksData.blockedUsers) {
+            setBlockedUsers(blocksData.blockedUsers);
+          }
+        } catch {
+          // Blocks list empty
         }
       } catch (error) {
         console.error("Failed to load profile:", error);
@@ -79,6 +124,18 @@ function Profile() {
         }
       );
       setProfile(created);
+
+      // Sync to social discovery store
+      await updateSocialPreferences({
+        discoveryOptIn,
+        intent,
+        adultConfirmed,
+        bio,
+        displayName,
+        username,
+        selectedFavorites,
+        readerDna,
+      });
     } catch (error) {
       console.error("Failed to create profile:", error);
       alert(error.message);
@@ -100,9 +157,83 @@ function Profile() {
       );
       setProfile(updated);
       setEditing(false);
+
+      // Also update social store
+      await updateSocialPreferences({
+        discoveryOptIn,
+        intent,
+        adultConfirmed,
+        bio,
+        displayName,
+        username,
+        selectedFavorites,
+        readerDna,
+      });
     } catch (error) {
       console.error("Failed to update profile:", error);
       alert(error.message);
+    }
+  }
+
+  async function handleSaveSocialSettings(e) {
+    if (e) e.preventDefault();
+    setSavingSocial(true);
+    setSocialMessage("");
+    setSocialError("");
+
+    if ((intent === "dating" || intent === "both") && !adultConfirmed) {
+      setSocialError("Adult eligibility confirmation (18+) is required for dating discovery.");
+      setSavingSocial(false);
+      return;
+    }
+
+    try {
+      const res = await updateSocialPreferences({
+        discoveryOptIn,
+        intent,
+        adultConfirmed,
+        bio,
+        displayName: displayName || profile?.displayName || "Reader",
+        username: username || profile?.username || "",
+        selectedFavorites,
+        readerDna,
+      });
+      setSocialMessage("Discovery settings updated.");
+      setDiscoveryOptIn(res.preferences.discoveryOptIn);
+    } catch (err) {
+      setSocialError(err.message || "Failed to update social settings.");
+    } finally {
+      setSavingSocial(false);
+    }
+  }
+
+  function toggleSelectedFavorite(book) {
+    const exists = selectedFavorites.some((f) => f.id === book.bookId);
+    if (exists) {
+      setSelectedFavorites(selectedFavorites.filter((f) => f.id !== book.bookId));
+    } else {
+      if (selectedFavorites.length >= 5) {
+        alert("You can select up to 5 favorite books to showcase.");
+        return;
+      }
+      setSelectedFavorites([
+        ...selectedFavorites,
+        {
+          id: book.bookId,
+          title: book.title,
+          author: book.author,
+          coverId: book.coverId || null,
+        },
+      ]);
+    }
+  }
+
+  async function handleUnblock(targetUserId) {
+    try {
+      await unblockReader(targetUserId);
+      setBlockedUsers(blockedUsers.filter((u) => u.userId !== targetUserId));
+    } catch (err) {
+      alert("Failed to unblock: " + err.message);
     }
   }
 
@@ -128,7 +259,7 @@ function Profile() {
               Create Your Profile
             </h1>
             <p className="text-sm text-[#1D3557]/70 font-sans mb-6">
-              Let other readers discover your bookshelf and find someone on your wavelength.
+              Let other readers discover your bookshelf and connect through shared reading compatibility.
             </p>
 
             <form onSubmit={createProfile} className="flex flex-col gap-4">
@@ -269,12 +400,20 @@ function Profile() {
                 </div>
               </div>
 
-              <button
-                onClick={() => setEditing(true)}
-                className="bg-white text-[#1D3557] border border-[#1D3557]/20 hover:border-[#1D3557]/50 font-mono text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-full transition cursor-pointer self-start sm:self-auto shrink-0 shadow-xs"
-              >
-                Edit Profile
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2 self-start sm:self-auto shrink-0">
+                <Link
+                  to={`/user/${profile.userId}`}
+                  className="bg-white text-[#457B9D] border border-[#457B9D]/30 hover:border-[#457B9D] font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-full transition cursor-pointer text-center"
+                >
+                  Public View ↗
+                </Link>
+                <button
+                  onClick={() => setEditing(true)}
+                  className="bg-white text-[#1D3557] border border-[#1D3557]/20 hover:border-[#1D3557]/50 font-mono text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-full transition cursor-pointer shadow-xs"
+                >
+                  Edit Bio
+                </button>
+              </div>
             </div>
 
             {/* Reading Stats Grid */}
@@ -304,6 +443,235 @@ function Profile() {
                 </span>
               </div>
             </div>
+
+            {/* PRIVACY-FIRST SOCIAL DISCOVERY & MATCHING SETTINGS */}
+            <section className="bg-white border border-[#1D3557]/15 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[#1D3557]/10 pb-3.5">
+                <div>
+                  <span className="font-mono text-xs uppercase tracking-widest text-[#457B9D] font-bold">
+                    Privacy-First Discovery
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-serif font-black text-[#1D3557] mt-0.5">
+                    Reader Discovery Settings
+                  </h2>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-[#1D3557]/70">
+                    {socialStats.matchesCount} Mutual Match{socialStats.matchesCount === 1 ? "" : "es"}
+                  </span>
+                </div>
+              </div>
+
+              {socialMessage && (
+                <div className="bg-[#2A9D8F]/10 border border-[#2A9D8F]/30 text-[#2A9D8F] text-xs font-mono p-2.5 rounded-xl">
+                  {socialMessage}
+                </div>
+              )}
+              {socialError && (
+                <div className="bg-[#E73847]/10 border border-[#E73847]/30 text-[#E73847] text-xs font-mono p-2.5 rounded-xl">
+                  {socialError}
+                </div>
+              )}
+
+              {/* 1. Compact Discovery Opt-in Toggle & Privacy Transparency */}
+              <div className="p-4 rounded-xl bg-[#F0FAEF] border border-[#1D3557]/10 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <label className="font-serif font-bold text-sm sm:text-base text-[#1D3557] cursor-pointer flex items-center gap-2">
+                      <span>Appear in Discover Readers</span>
+                      {discoveryOptIn ? (
+                        <span className="bg-[#2A9D8F]/20 text-[#2A9D8F] text-[10px] font-mono px-2 py-0.5 rounded-full font-bold">
+                          ACTIVE
+                        </span>
+                      ) : (
+                        <span className="bg-[#1D3557]/10 text-[#1D3557]/70 text-[10px] font-mono px-2 py-0.5 rounded-full">
+                          OFF (PRIVATE)
+                        </span>
+                      )}
+                    </label>
+                    <p className="text-xs text-[#1D3557]/75 font-sans leading-relaxed">
+                      Disabled by default. When active, other opted-in readers can discover your public profile and reading compatibility.
+                    </p>
+                  </div>
+
+                  <input
+                    type="checkbox"
+                    checked={discoveryOptIn}
+                    onChange={(e) => setDiscoveryOptIn(e.target.checked)}
+                    className="w-5 h-5 accent-[#E73847] cursor-pointer mt-0.5 shrink-0"
+                  />
+                </div>
+
+                {/* Compact Privacy Transparency Panel */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs font-sans p-3 rounded-lg bg-white border border-[#1D3557]/12">
+                  <div>
+                    <span className="font-mono font-bold text-[#2A9D8F] block mb-0.5">
+                      ✓ What others see
+                    </span>
+                    <p className="text-[#1D3557]/70 leading-snug">
+                      Display name, username, bio, top genres, and up to 5 showcased books.
+                    </p>
+                  </div>
+                  <div>
+                    <span className="font-mono font-bold text-[#E73847] block mb-0.5">
+                      🔒 What stays private
+                    </span>
+                    <p className="text-[#1D3557]/70 leading-snug">
+                      Email address, location, reading progress, and unshared bookshelf entries.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Connection Intent & Adult Verification */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                <div>
+                  <label className="block text-xs font-mono uppercase text-[#1D3557]/80 font-bold mb-1.5">
+                    Connection Intent
+                  </label>
+                  <div className="flex flex-col gap-1.5">
+                    {[
+                      { key: "friends", label: "Reading Friends", desc: "Book discussions, shelf buddying, literary banter" },
+                      { key: "dating", label: "Dating", desc: "Romantic connection sparked by reading taste" },
+                      { key: "both", label: "Both Friends & Dating", desc: "Open to literary companionship or romance" },
+                    ].map((opt) => (
+                      <label
+                        key={opt.key}
+                        className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition ${
+                          intent === opt.key
+                            ? "bg-[#A8DADB]/25 border-[#1D3557]/40 shadow-xs"
+                            : "bg-white border-[#1D3557]/15 hover:bg-[#F0FAEF]"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="intent"
+                          value={opt.key}
+                          checked={intent === opt.key}
+                          onChange={(e) => setIntent(e.target.value)}
+                          className="mt-0.5 accent-[#E73847]"
+                        />
+                        <div>
+                          <span className="font-serif font-bold text-xs sm:text-sm text-[#1D3557] block">
+                            {opt.label}
+                          </span>
+                          <span className="text-[11px] text-[#1D3557]/70 font-sans block leading-tight">
+                            {opt.desc}
+                          </span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {(intent === "dating" || intent === "both") && (
+                    <div className="p-3 rounded-lg bg-[#E73847]/5 border border-[#E73847]/20 space-y-1.5">
+                      <span className="text-xs font-mono font-bold uppercase text-[#E73847] block">
+                        Adult Eligibility Certification
+                      </span>
+                      <p className="text-xs text-[#1D3557]/80 font-sans leading-relaxed">
+                        To protect community safety, dating discovery is strictly for adults. Libsque requires affirmative confirmation.
+                      </p>
+                      <label className="flex items-start gap-2 cursor-pointer pt-0.5">
+                        <input
+                          type="checkbox"
+                          checked={adultConfirmed}
+                          onChange={(e) => setAdultConfirmed(e.target.checked)}
+                          className="w-4 h-4 accent-[#E73847] mt-0.5 shrink-0"
+                        />
+                        <span className="text-[11px] font-sans text-[#1D3557] font-semibold leading-snug">
+                          I certify that I am at least 18 years of age and legally eligible for reader dating discovery.
+                        </span>
+                      </label>
+                    </div>
+                  )}
+
+                  <div className="p-3.5 rounded-lg bg-white border border-[#1D3557]/15">
+                    <span className="text-xs font-mono font-bold uppercase text-[#457B9D] block mb-0.5">
+                      Showcase Selected Favorites ({selectedFavorites.length}/5)
+                    </span>
+                    <p className="text-xs text-[#1D3557]/70 font-sans mb-2">
+                      Choose up to 5 books from your shelf to feature on your public card.
+                    </p>
+
+                    {library.length === 0 ? (
+                      <p className="text-xs text-[#1D3557]/60 italic font-sans">
+                        Add books to your Bookshelf to select your showcased favorites.
+                      </p>
+                    ) : (
+                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                        {library.map((b) => {
+                          const isSelected = selectedFavorites.some((f) => f.id === b.bookId);
+                          return (
+                            <button
+                              type="button"
+                              key={b.$id}
+                              onClick={() => toggleSelectedFavorite(b)}
+                              className={`w-full text-left p-1.5 rounded-md text-xs font-serif flex items-center justify-between border transition cursor-pointer ${
+                                isSelected
+                                  ? "bg-[#A8DADB]/30 border-[#457B9D] text-[#1D3557] font-bold"
+                                  : "bg-[#F0FAEF] border-[#1D3557]/10 text-[#1D3557]/80 hover:bg-white"
+                              }`}
+                            >
+                              <span className="truncate pr-2">{b.title}</span>
+                              <span className="font-mono text-[10px] shrink-0">
+                                {isSelected ? "✓ Added" : "+ Add"}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Save Discovery Settings Button */}
+              <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-[#1D3557]/10">
+                <span className="text-xs font-mono text-[#1D3557]/60">
+                  Settings are enforced by backend authentication and authorization policies.
+                </span>
+
+                <button
+                  type="button"
+                  onClick={handleSaveSocialSettings}
+                  disabled={savingSocial}
+                  className="bg-[#E73847] hover:bg-[#d02736] text-white font-mono text-xs font-bold uppercase tracking-wider px-6 py-2.5 rounded-full transition shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {savingSocial ? "Saving..." : "Save Discovery Settings"}
+                </button>
+              </div>
+
+              {/* Blocked Users Section */}
+              {blockedUsers.length > 0 && (
+                <div className="pt-4 border-t border-[#1D3557]/10">
+                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#1D3557]/70 mb-3">
+                    Blocked Readers ({blockedUsers.length})
+                  </h3>
+                  <div className="space-y-2 max-w-md">
+                    {blockedUsers.map((bu) => (
+                      <div
+                        key={bu.userId}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-[#F0FAEF] border border-[#1D3557]/10 text-xs"
+                      >
+                        <span className="font-serif font-bold text-[#1D3557]">
+                          {bu.displayName} (@{bu.username || "reader"})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleUnblock(bu.userId)}
+                          className="font-mono text-[11px] text-[#E73847] hover:underline cursor-pointer"
+                        >
+                          Unblock
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
 
             {/* PROMINENT CORAL RED READER DNA CARD */}
             <div className="bg-[#E73847] text-white rounded-3xl p-6 sm:p-8 shadow-md relative overflow-hidden">
@@ -357,7 +725,7 @@ function Profile() {
                     {/* Themes */}
                     <div>
                       <h3 className="text-sm font-mono uppercase tracking-wider text-white/90 font-bold mb-4 flex items-center gap-2">
-                        <span>Sensibilities & Themes</span>
+                        <span>Reading Themes</span>
                         <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">
                           {topThemes.length}
                         </span>

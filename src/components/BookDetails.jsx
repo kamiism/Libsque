@@ -221,10 +221,19 @@ function BookDetails() {
         if (data.authors?.length > 0) {
           const authorKey = data.authors[0].author?.key;
           if (authorKey) {
-            const authorResponse = await fetch(`https://openlibrary.org${authorKey}.json`);
-            if (authorResponse.ok) {
-              const authorData = await authorResponse.json();
-              bookAuthor = authorData.name || "Unknown author";
+            try {
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), 2000);
+              const authorResponse = await fetch(`https://openlibrary.org${authorKey}.json`, {
+                signal: controller.signal,
+              });
+              clearTimeout(timer);
+              if (authorResponse.ok) {
+                const authorData = await authorResponse.json();
+                bookAuthor = authorData.name || "Unknown author";
+              }
+            } catch {
+              // fallback gracefully to unknown author
             }
           }
         }
@@ -406,92 +415,131 @@ function BookDetails() {
               )}
             </div>
 
-            {/* Reading Options */}
-            <div className="p-6 bg-white rounded-2xl border border-[#1D3557]/12 shadow-xs space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-wider font-mono text-[#457B9D]">
-                Available Formats
-              </h2>
+            {/* Reading Options - Separated into Full-Text and Previews */}
+            <div className="p-6 bg-white rounded-2xl border border-[#1D3557]/12 shadow-xs space-y-6">
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-wider font-mono text-[#457B9D] mb-3">
+                  Reading Availability
+                </h2>
 
-              {checkingReaders ? (
-                <p className="text-xs text-[#1D3557]/60 font-mono">Checking available formats...</p>
-              ) : (
-                <div className="flex flex-wrap gap-3 items-center">
-                  {gutenbergOption && (
-                    <button
-                      onClick={() => {
-                        navigate(
-                          `/read/${gutenbergOption.mode}/${gutenbergOption.id}?title=${encodeURIComponent(
-                            book.title
-                          )}&workId=${encodeURIComponent(bookId)}`
-                        );
-                      }}
-                      className="bg-[#E73847] hover:bg-[#C62635] text-white px-5 py-2.5 rounded-xl cursor-pointer transition text-xs sm:text-sm font-semibold tracking-wide shadow-xs"
-                    >
-                      Read EPUB
-                    </button>
-                  )}
-
-                  {doabOption && (
-                    <div className="flex flex-col gap-1">
-                      <Link
-                        to={`/read/${doabOption.format}/${encodeURIComponent(
-                          bookId
-                        )}?title=${encodeURIComponent(book.title)}&workId=${encodeURIComponent(
-                          bookId
-                        )}&url=${encodeURIComponent(doabOption.url)}&publisher=${encodeURIComponent(
-                          doabOption.publisher || ""
-                        )}&license=${encodeURIComponent(doabOption.license || "")}`}
-                        className="bg-[#A8DADB] hover:bg-[#8cc7c8] text-[#1D3557] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition shadow-xs border border-[#1D3557]/20"
-                      >
-                        {doabOption.label}
-                      </Link>
-                      <span className="text-[11px] text-[#1D3557]/60 font-mono">
-                        {doabOption.publisher ? `${doabOption.publisher} • ` : ""}
-                        {doabOption.license || "Open Access"}
+                {checkingReaders ? (
+                  <p className="text-xs text-[#1D3557]/60 font-mono animate-pulse">
+                    Verifying full-text editions and previews...
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {/* 1. Full-Text Reading Options */}
+                    <div>
+                      <span className="text-[11px] font-mono uppercase tracking-wider text-[#1D3557]/60 font-semibold block mb-2">
+                        Full-Text Reading
                       </span>
+
+                      {gutenbergOption || doabOption || archiveOption || (googleOption && googleOption.access === "full") ? (
+                        <div className="flex flex-wrap gap-3 items-center">
+                          {gutenbergOption && (
+                            <button
+                              onClick={() => {
+                                navigate(
+                                  `/read/${gutenbergOption.mode}/${gutenbergOption.id}?title=${encodeURIComponent(
+                                    book.title
+                                  )}&workId=${encodeURIComponent(bookId)}`
+                                );
+                              }}
+                              className="bg-[#E73847] hover:bg-[#C62635] text-white px-5 py-2.5 rounded-xl cursor-pointer transition text-xs sm:text-sm font-semibold tracking-wide shadow-xs flex items-center gap-1.5"
+                            >
+                              <span>📖</span>
+                              <span>{gutenbergOption.label} (Public Domain)</span>
+                            </button>
+                          )}
+
+                          {doabOption && (
+                            <div className="flex flex-col gap-1">
+                              <Link
+                                to={`/read/${doabOption.format}/${encodeURIComponent(
+                                  bookId
+                                )}?title=${encodeURIComponent(book.title)}&workId=${encodeURIComponent(
+                                  bookId
+                                )}&url=${encodeURIComponent(doabOption.url)}&publisher=${encodeURIComponent(
+                                  doabOption.publisher || ""
+                                )}&license=${encodeURIComponent(doabOption.license || "")}`}
+                                className="bg-[#A8DADB] hover:bg-[#8cc7c8] text-[#1D3557] px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition shadow-xs border border-[#1D3557]/20 flex items-center gap-1.5"
+                              >
+                                <span>📖</span>
+                                <span>{doabOption.label}</span>
+                              </Link>
+                              <span className="text-[11px] text-[#1D3557]/60 font-mono">
+                                {doabOption.publisher ? `${doabOption.publisher} • ` : ""}
+                                {doabOption.license || "Open Access"}
+                              </span>
+                            </div>
+                          )}
+
+                          {archiveOption && (
+                            <Link
+                              to={`/read/ia/${encodeURIComponent(archiveOption.archiveId)}?title=${encodeURIComponent(
+                                book.title
+                              )}&workId=${encodeURIComponent(bookId)}`}
+                              className="bg-white border border-[#1D3557]/25 text-[#1D3557] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[#A8DADB]/20 transition flex items-center gap-1.5"
+                            >
+                              <span>🏛️</span>
+                              <span>Read on Internet Archive (Full Scan)</span>
+                            </Link>
+                          )}
+
+                          {googleOption && googleOption.access === "full" && (
+                            <Link
+                              to={`/read/google/${encodeURIComponent(googleOption.id)}?title=${encodeURIComponent(
+                                book.title
+                              )}&workId=${encodeURIComponent(bookId)}`}
+                              className="bg-white border border-[#1D3557]/25 text-[#1D3557] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[#A8DADB]/20 transition"
+                            >
+                              Read Full Book (Google)
+                            </Link>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-[#1D3557]/60 italic">
+                          No open-access full text is currently verified for this work. Most modern publications remain under copyright.
+                        </p>
+                      )}
                     </div>
-                  )}
 
-                  {archiveOption && (
-                    <Link
-                      to={`/read/ia/${encodeURIComponent(archiveOption.archiveId)}?title=${encodeURIComponent(
-                        book.title
-                      )}&workId=${encodeURIComponent(bookId)}`}
-                      className="bg-white border border-[#1D3557]/25 text-[#1D3557] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[#A8DADB]/20 transition"
-                    >
-                      Internet Archive Viewer
-                    </Link>
-                  )}
+                    {/* 2. Previews & External Audio Options */}
+                    {(googleOption?.access === "preview" || librivoxOption) && (
+                      <div className="pt-3 border-t border-[#1D3557]/10">
+                        <span className="text-[11px] font-mono uppercase tracking-wider text-[#1D3557]/60 font-semibold block mb-2">
+                          Sample Preview & Audio
+                        </span>
+                        <div className="flex flex-wrap gap-3 items-center">
+                          {googleOption && googleOption.access === "preview" && (
+                            <Link
+                              to={`/read/google/${encodeURIComponent(googleOption.id)}?title=${encodeURIComponent(
+                                book.title
+                              )}&workId=${encodeURIComponent(bookId)}`}
+                              className="bg-white border border-[#1D3557]/25 text-[#1D3557] px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[#A8DADB]/20 transition flex items-center gap-1.5"
+                            >
+                              <span>🔍</span>
+                              <span>Google Books Preview (Limited Pages)</span>
+                            </Link>
+                          )}
 
-                  {googleOption && (
-                    <Link
-                      to={`/read/google/${encodeURIComponent(googleOption.id)}?title=${encodeURIComponent(
-                        book.title
-                      )}&workId=${encodeURIComponent(bookId)}`}
-                      className="bg-white border border-[#1D3557]/25 text-[#1D3557] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[#A8DADB]/20 transition"
-                    >
-                      {googleOption.label}
-                    </Link>
-                  )}
-
-                  {librivoxOption && (
-                    <a
-                      href={librivoxOption.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-white border border-[#1D3557]/25 text-[#1D3557] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[#A8DADB]/20 transition"
-                    >
-                      🎧 {librivoxOption.label} ↗
-                    </a>
-                  )}
-
-                  {!gutenbergOption && !archiveOption && !googleOption && !doabOption && !librivoxOption && (
-                    <p className="text-xs text-[#1D3557]/60 italic">
-                      No public domain reader or preview available for this edition.
-                    </p>
-                  )}
-                </div>
-              )}
+                          {librivoxOption && (
+                            <a
+                              href={librivoxOption.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-white border border-[#1D3557]/25 text-[#1D3557] px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[#A8DADB]/20 transition flex items-center gap-1.5"
+                            >
+                              <span>🎧</span>
+                              <span>{librivoxOption.label} ↗</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Rating and Favourites */}

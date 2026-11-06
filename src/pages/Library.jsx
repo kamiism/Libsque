@@ -153,7 +153,7 @@ function Library() {
               Your bookshelf is waiting for its first spark.
             </h2>
             <p className="text-sm text-[#1D3557]/70 font-sans mb-6">
-              Add books to your personal library, track your reading progress, and find readers on your literary wavelength.
+              Add books to your personal library, track your reading progress, and find readers with shared reading compatibility.
             </p>
             <Link
               to="/"

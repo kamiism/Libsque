@@ -291,20 +291,20 @@ function UnifiedReader() {
 
   return (
     <div className={`w-full min-h-screen flex flex-col ${currentTheme.bg} ${currentTheme.text}`}>
-      <header className="border-b px-4 py-3 flex items-center justify-between border-neutral-200 dark:border-neutral-800">
+      <header className="border-b px-4 py-3 flex items-center justify-between border-neutral-200 dark:border-neutral-800 bg-opacity-95 backdrop-blur-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="border rounded px-3 py-1.5 text-sm hover:opacity-80 transition cursor-pointer"
+            className="bg-white text-[#1D3557] border border-[#1D3557]/20 hover:border-[#1D3557]/50 rounded-lg px-3 py-1.5 text-xs font-mono font-bold transition cursor-pointer shadow-xs"
           >
             ← Back
           </button>
           <div>
-            <h1 className="font-bold text-base leading-tight truncate max-w-xs md:max-w-md">
+            <h1 className="font-serif font-bold text-base leading-tight truncate max-w-xs md:max-w-md">
               {title}
             </h1>
-            <p className="text-xs opacity-60">
-              Source: {source.toUpperCase()} {publisher ? `• ${publisher}` : ""} {license ? `• ${license}` : ""} {progress > 0 ? `• ${progress}% read` : ""}
+            <p className="text-xs font-mono opacity-70">
+              Source: <span className="font-bold text-[#E73847]">{source.toUpperCase()}</span> {publisher ? `• ${publisher}` : ""} {license ? `• ${license}` : ""} {progress > 0 ? `• ${progress}% read` : ""}
             </p>
           </div>
         </div>
@@ -314,30 +314,30 @@ function UnifiedReader() {
             <div className="flex items-center gap-1 text-sm">
               <button
                 onClick={() => setFontSize((s) => Math.max(14, s - 2))}
-                className="border rounded px-2 py-1 text-xs"
+                className="bg-white text-[#1D3557] border border-[#1D3557]/20 hover:border-[#1D3557]/50 rounded px-2.5 py-1 text-xs font-mono font-bold shadow-xs cursor-pointer"
                 title="Decrease font size"
               >
                 A-
               </button>
-              <span className="w-8 text-center text-xs">{fontSize}px</span>
+              <span className="w-8 text-center text-xs font-mono font-bold">{fontSize}px</span>
               <button
                 onClick={() => setFontSize((s) => Math.min(32, s + 2))}
-                className="border rounded px-2 py-1 text-xs"
+                className="bg-white text-[#1D3557] border border-[#1D3557]/20 hover:border-[#1D3557]/50 rounded px-2.5 py-1 text-xs font-mono font-bold shadow-xs cursor-pointer"
                 title="Increase font size"
               >
                 A+
               </button>
             </div>
 
-            <div className="flex border rounded overflow-hidden text-xs">
+            <div className="flex bg-white border border-[#1D3557]/20 rounded-lg overflow-hidden text-xs shadow-xs font-mono">
               {Object.entries(THEMES).map(([key, cfg]) => (
                 <button
                   key={key}
                   onClick={() => setThemeKey(key)}
-                  className={`px-2.5 py-1 ${
+                  className={`px-3 py-1 text-xs cursor-pointer transition ${
                     themeKey === key
-                      ? "bg-black text-white dark:bg-white dark:text-black font-semibold"
-                      : "opacity-75 hover:opacity-100"
+                      ? "bg-[#1D3557] text-[#F0FAEF] font-bold"
+                      : "text-[#1D3557] hover:bg-[#F0FAEF]"
                   }`}
                 >
                   {cfg.name}
@@ -352,10 +352,10 @@ function UnifiedReader() {
                   setCurrentChapter(Number(e.target.value));
                   window.scrollTo(0, 0);
                 }}
-                className="border rounded px-2 py-1 text-xs bg-transparent"
+                className="bg-white text-[#1D3557] border border-[#1D3557]/20 rounded-lg px-2.5 py-1 text-xs font-mono font-bold shadow-xs cursor-pointer"
               >
                 {Array.from({ length: htmlBookData.totalChapters || 61 }, (_, i) => (
-                  <option key={i + 1} value={i + 1} className="text-black bg-white">
+                  <option key={i + 1} value={i + 1} className="text-[#1D3557] bg-white">
                     Ch. {i + 1}
                   </option>
                 ))}
@@ -386,7 +386,7 @@ function UnifiedReader() {
             </div>
             <button
               onClick={() => navigate(-1)}
-              className="border rounded px-4 py-2 text-sm hover:opacity-80 transition cursor-pointer"
+              className="bg-white text-[#1D3557] border border-[#1D3557]/20 hover:border-[#1D3557]/50 rounded-xl px-5 py-2.5 text-xs font-mono font-bold transition cursor-pointer shadow-xs"
             >
               ← Back to Book Details
             </button>
@@ -396,26 +396,26 @@ function UnifiedReader() {
         {source === "epub" && (
           <div className="flex-1 flex flex-col p-4 max-w-4xl w-full mx-auto">
             {loading && !error && (
-              <div className="p-12 text-center opacity-70">Loading EPUB book...</div>
+              <div className="p-12 text-center opacity-70 font-mono text-sm animate-pulse">Loading EPUB book...</div>
             )}
             <div
               ref={epubViewerRef}
-              className="w-full border rounded-lg overflow-hidden shadow-sm"
+              className="w-full border rounded-xl overflow-hidden shadow-sm"
               style={{ height: "75vh" }}
             />
             <div className="flex justify-between items-center py-4">
               <button
                 onClick={() => renditionRef.current?.prev()}
-                className="border rounded px-5 py-2 text-sm hover:opacity-80 transition cursor-pointer"
+                className="bg-white text-[#1D3557] border border-[#1D3557]/20 hover:border-[#1D3557]/50 rounded-xl px-5 py-2.5 text-xs font-mono font-bold transition cursor-pointer shadow-xs"
               >
                 ← Previous Page
               </button>
-              <span className="text-xs opacity-60">
+              <span className="text-xs font-mono opacity-70">
                 {progress > 0 ? `${progress}% complete` : "Reading"}
               </span>
               <button
                 onClick={() => renditionRef.current?.next()}
-                className="border rounded px-5 py-2 text-sm hover:opacity-80 transition cursor-pointer"
+                className="bg-white text-[#1D3557] border border-[#1D3557]/20 hover:border-[#1D3557]/50 rounded-xl px-5 py-2.5 text-xs font-mono font-bold transition cursor-pointer shadow-xs"
               >
                 Next Page →
               </button>
@@ -425,11 +425,11 @@ function UnifiedReader() {
 
         {source === "html" && (
           <div className="max-w-3xl mx-auto px-6 py-8 w-full">
-            {loading && <p className="opacity-70">Loading chapter...</p>}
+            {loading && <p className="opacity-70 font-mono text-sm animate-pulse">Loading chapter...</p>}
             {!loading && htmlBookData && (
               <article>
-                <h2 className="text-2xl font-bold mb-2">{htmlBookData.title}</h2>
-                <h3 className="text-lg opacity-80 mb-6">Chapter {htmlBookData.chapter}</h3>
+                <h2 className="text-2xl font-serif font-bold mb-2">{htmlBookData.title}</h2>
+                <h3 className="text-base font-mono opacity-80 mb-6">Chapter {htmlBookData.chapter}</h3>
                 <div
                   className="space-y-5 leading-relaxed"
                   style={{ fontSize: `${fontSize}px` }}
@@ -445,7 +445,7 @@ function UnifiedReader() {
                       setCurrentChapter((c) => Math.max(1, c - 1));
                       window.scrollTo(0, 0);
                     }}
-                    className="border rounded px-4 py-2 text-sm disabled:opacity-40"
+                    className="bg-white text-[#1D3557] border border-[#1D3557]/20 hover:border-[#1D3557]/50 rounded-xl px-4 py-2 text-xs font-mono font-bold disabled:opacity-40 transition shadow-xs cursor-pointer"
                   >
                     ← Previous Chapter
                   </button>
@@ -455,7 +455,7 @@ function UnifiedReader() {
                       setCurrentChapter((c) => c + 1);
                       window.scrollTo(0, 0);
                     }}
-                    className="border rounded px-4 py-2 text-sm disabled:opacity-40"
+                    className="bg-white text-[#1D3557] border border-[#1D3557]/20 hover:border-[#1D3557]/50 rounded-xl px-4 py-2 text-xs font-mono font-bold disabled:opacity-40 transition shadow-xs cursor-pointer"
                   >
                     Next Chapter →
                   </button>

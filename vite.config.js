@@ -7,6 +7,9 @@ export default defineConfig({
   plugins: [tailwindcss(),react()],
 
   server: {
+    allowedHosts: [
+      "sweet-society-podcast-eligible.trycloudflare.com"
+    ],
     proxy: {
       "/api": {
         target: "http://localhost:3001",

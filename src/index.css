@@ -1,1 +1,78 @@
 @import "tailwindcss";
+
+@theme {
+  --color-coral: #E73847;
+  --color-coral-dark: #C62635;
+  --color-mint: #F0FAEF;
+  --color-mint-light: #F7FCF6;
+  --color-seafoam: #A8DADB;
+  --color-seafoam-light: #E0F0F0;
+  --color-ocean: #457B9D;
+  --color-navy: #1D3557;
+  --color-navy-dark: #122238;
+
+  --font-serif: "Fraunces", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background-color: #F0FAEF;
+  color: #1D3557;
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Editorial typography utilities */
+.font-editorial {
+  font-family: var(--font-serif);
+  font-variation-settings: "opsz" 36;
+}
+
+/* Subtle card tactile shadow */
+.card-indie {
+  background-color: #ffffff;
+  border: 1px solid rgba(29, 53, 87, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 4px 0 0 rgba(29, 53, 87, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-indie:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 0 rgba(29, 53, 87, 0.12);
+}
+
+.card-coral {
+  background-color: #E73847;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  box-shadow: 0 6px 0 0 rgba(198, 38, 53, 0.4);
+}
+
+/* Paper grain aesthetic */
+.paper-tag {
+  background-color: #A8DADB;
+  color: #1D3557;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,62 +1,53 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useParams } from "react-router-dom";
 import BookDetails from "./components/BookDetails";
 import BookSearch from "./components/BookSearch";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
-import EpubReader from "./pages/EpubReader";
 import Feed from "./pages/Feed";
-import GutenbergReader from "./pages/GutenbergReader";
 import Library from "./pages/Library";
 import Auth from "./pages/LoginPage";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
-import Reader from "./pages/Reader";
+import UnifiedReader from "./pages/UnifiedReader";
+
+function LegacyArchiveRedirect() {
+  const { archiveId } = useParams();
+  return <Navigate to={`/read/ia/${archiveId}`} replace />;
+}
+
+function LegacyGutenbergRedirect() {
+  const { gutenbergId } = useParams();
+  return <Navigate to={`/read/epub/${gutenbergId}`} replace />;
+}
 
 function App() {
   return (
     <BrowserRouter>
       <Navbar />
       <Routes>
-        <Route path="/profile" element={
-          <ProtectedRoute>
-            <Profile />
-          </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/read/:archiveId"
+        <Route
+          path="/profile"
           element={
             <ProtectedRoute>
-              <Reader />
+              <Profile />
             </ProtectedRoute>
           }
         />
-        <Route 
+        <Route
           path="/read/gutenberg/:gutenbergId"
-          element={
-            <ProtectedRoute>
-              <GutenbergReader />
-            </ProtectedRoute>
-          }
+          element={<LegacyGutenbergRedirect />}
         />
-        <Route 
-          path="/read/epub/:gutenbergId"
-          element={
-            <ProtectedRoute>
-              <EpubReader />
-            </ProtectedRoute>
-          }
+        <Route
+          path="/read/:source/:bookId"
+          element={<UnifiedReader />}
         />
-        <Route 
-          path="/read/google/:googleBookId"
-          element={
-            <ProtectedRoute>
-              <Reader />
-            </ProtectedRoute>
-          }
+        <Route
+          path="/read/:archiveId"
+          element={<LegacyArchiveRedirect />}
         />
+
         <Route path="/" element={<BookSearch />} />
-        <Route 
+        <Route
           path="/feed"
           element={
             <ProtectedRoute>
@@ -74,11 +65,14 @@ function App() {
         />
         <Route path="/login" element={<Auth />} />
         <Route path="/book/:bookId" element={<BookDetails />} />
-        <Route path="/library" element={
-          <ProtectedRoute>
-            <Library />
-          </ProtectedRoute>
-          } />
+        <Route
+          path="/library"
+          element={
+            <ProtectedRoute>
+              <Library />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

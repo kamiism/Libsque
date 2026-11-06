@@ -1,4 +1,4 @@
-import { genreTaxonomy } from "../data/genreTaxonomy";
+import { genreTaxonomy } from "../data/genreTaxonomy.js";
 
 function addParentGenres(genres) {
   const result = new Set(genres);

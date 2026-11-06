@@ -1,4 +1,4 @@
-import { genreTaxonomy } from "../data/genreTaxonomy";
+import { genreTaxonomy } from "../data/genreTaxonomy.js";
 
 function normalizeScores(scores) {
   const values = Object.values(scores);

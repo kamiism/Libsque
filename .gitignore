@@ -23,3 +23,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.env.*
+!.env.example
+
+data/social_discovery.json
+data/social_discovery.json.bak
+data/backups/
+data/.tmp_social_discovery_*

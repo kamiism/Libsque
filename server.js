@@ -3,15 +3,162 @@ import express from "express";
 import fs from "node:fs";
 import dns from "node:dns";
 import crypto from "node:crypto";
+import path from "node:path";
+import os from "node:os";
+import { fileURLToPath } from "node:url";
 import { buildDoabIndex, downloadDoabFeed } from "./scripts/syncDoab.js";
 import { verifyAppwriteToken } from "./src/utils/verifyAppwrite.js";
 import { activeSocialStore, currentEngine } from "./src/services/socialStore.js";
 
-const app = express();
-const PORT = 3001;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-app.use(express.json());
-app.use("/books", express.static("./public/books"));
+const app = express();
+const PORT = Number(process.env.PORT) || 3001;
+const HOST = process.env.HOST || "0.0.0.0";
+
+// Filesystem storage: Bundled immutable assets + writable ephemeral temporary caches
+const BUNDLED_BOOKS_DIR = path.resolve(__dirname, "public/books");
+const DYNAMIC_CACHE_DIR = process.env.DYNAMIC_CACHE_DIR
+  ? path.resolve(process.env.DYNAMIC_CACHE_DIR)
+  : path.join(os.tmpdir(), "libsque_cache");
+const DYNAMIC_BOOKS_DIR = path.join(DYNAMIC_CACHE_DIR, "books");
+const DYNAMIC_EPUB_DIR = path.join(DYNAMIC_CACHE_DIR, "epub_cache");
+const DIST_DIR = path.resolve(__dirname, "dist");
+
+// Ensure writable ephemeral cache directories exist
+if (!fs.existsSync(DYNAMIC_BOOKS_DIR)) {
+  fs.mkdirSync(DYNAMIC_BOOKS_DIR, { recursive: true });
+}
+if (!fs.existsSync(DYNAMIC_EPUB_DIR)) {
+  fs.mkdirSync(DYNAMIC_EPUB_DIR, { recursive: true });
+}
+
+// Bounded cache maintenance (prevents disk saturation on free tier instances)
+function pruneDirectory(dirPath, maxFiles = 50, maxTotalBytes = 100 * 1024 * 1024) {
+  try {
+    if (!fs.existsSync(dirPath)) return;
+    const entries = fs
+      .readdirSync(dirPath)
+      .map((name) => {
+        const full = path.join(dirPath, name);
+        try {
+          const stat = fs.statSync(full);
+          return { name, full, size: stat.size, mtimeMs: stat.mtimeMs, isFile: stat.isFile() };
+        } catch {
+          return null;
+        }
+      })
+      .filter((e) => e && e.isFile);
+
+    let totalBytes = entries.reduce((acc, e) => acc + e.size, 0);
+    if (entries.length <= maxFiles && totalBytes <= maxTotalBytes) return;
+
+    entries.sort((a, b) => a.mtimeMs - b.mtimeMs);
+    while (entries.length > 0 && (entries.length > maxFiles || totalBytes > maxTotalBytes)) {
+      const oldest = entries.shift();
+      try {
+        fs.unlinkSync(oldest.full);
+        totalBytes -= oldest.size;
+        console.log(`Pruned dynamic cache file: ${oldest.name} (${oldest.size} bytes)`);
+      } catch {
+        // non-fatal
+      }
+    }
+  } catch (err) {
+    console.warn("Directory pruning warning:", err.message);
+  }
+}
+
+// Security Headers
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
+
+// Request body limit
+app.use(express.json({ limit: "1mb" }));
+
+// Lightweight in-memory rate limiter for API endpoints
+const ipRequestCounts = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX = 300;
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api") || req.path === "/api/health") {
+    return next();
+  }
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  let record = ipRequestCounts.get(ip);
+  if (!record || now - record.start > RATE_LIMIT_WINDOW_MS) {
+    record = { start: now, count: 1 };
+    ipRequestCounts.set(ip, record);
+  } else {
+    record.count++;
+  }
+
+  if (ipRequestCounts.size > 5000) {
+    for (const [k, v] of ipRequestCounts.entries()) {
+      if (now - v.start > RATE_LIMIT_WINDOW_MS) ipRequestCounts.delete(k);
+    }
+  }
+
+  if (record.count > RATE_LIMIT_MAX) {
+    res.setHeader("Retry-After", "60");
+    return res.status(429).json({ error: "Too many requests. Please slow down." });
+  }
+  next();
+});
+
+// Guard against internal/sensitive file probing
+app.use((req, res, next) => {
+  const p = req.path.toLowerCase();
+  if (
+    p.includes("/.") ||
+    p.startsWith("/data") ||
+    p.startsWith("/scripts") ||
+    p.startsWith("/src") ||
+    p.includes(".env") ||
+    p.includes(".bak")
+  ) {
+    return res.status(403).json({ error: "Access forbidden" });
+  }
+  next();
+});
+
+// Static book serving:
+// Copyright guard: block redistribution of copyrighted editions
+app.use("/books", (req, res, next) => {
+  if (req.path.includes("5200")) {
+    return res.status(403).json({ error: "Access to copyrighted edition forbidden" });
+  }
+  next();
+});
+// 1. Dynamic cache (on-demand downloads in temporary storage)
+app.use("/books", express.static(DYNAMIC_BOOKS_DIR, { maxAge: "1d" }));
+// 2. Bundled seed books (immutable public domain editions in image)
+if (fs.existsSync(BUNDLED_BOOKS_DIR)) {
+  app.use("/books", express.static(BUNDLED_BOOKS_DIR, { maxAge: "7d" }));
+}
+
+// Static compiled production React bundle
+if (fs.existsSync(DIST_DIR)) {
+  app.use(express.static(DIST_DIR, { maxAge: "1d", index: false }));
+}
+
+// Lightweight Health Check endpoint (zero secret disclosure)
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    engine: currentEngine,
+  });
+});
 
 function loadGutenbergData() {
   try {
@@ -131,31 +278,51 @@ app.get("/api/gutenberg/book/:id", (req, res) => {
   });
 });
 
+const COPYRIGHT_RESTRICTED_IDS = new Set([5200]);
+
 app.get("/api/gutenberg/:id/epub", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid Gutenberg ID" });
+  }
+  if (COPYRIGHT_RESTRICTED_IDS.has(id)) {
+    return res.status(403).json({
+      error: "This edition contains copyrighted translation/material and cannot be redistributed. Please read an official or public domain edition.",
+      copyrightRestricted: true,
+    });
   }
   const book = books.find((item) => item.id === id);
   if (!book) {
     return res.status(404).json({ error: "Book not found in catalog" });
   }
 
-  const filePath = `./public/books/${id}.epub`;
-  if (fs.existsSync(filePath)) {
-    try {
-      const stats = fs.statSync(filePath);
-      if (stats.size > 1000) {
-        return res.json({
-          id: book.id,
-          title: book.title,
-          available: true,
-          epubUrl: `/books/${id}.epub`,
-        });
+  const existingPath = (() => {
+    const dynamic = path.join(DYNAMIC_BOOKS_DIR, `${id}.epub`);
+    if (fs.existsSync(dynamic)) {
+      try {
+        if (fs.statSync(dynamic).size > 1000) return dynamic;
+      } catch {
+        // ignore
       }
-    } catch {
-      // Re-fetch if stat fails
     }
+    const bundled = path.join(BUNDLED_BOOKS_DIR, `${id}.epub`);
+    if (fs.existsSync(bundled)) {
+      try {
+        if (fs.statSync(bundled).size > 1000) return bundled;
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  })();
+
+  if (existingPath) {
+    return res.json({
+      id: book.id,
+      title: book.title,
+      available: true,
+      epubUrl: `/books/${id}.epub`,
+    });
   }
 
   // Dynamically fetch and cache public-domain EPUB from Gutenberg mirrors
@@ -180,13 +347,15 @@ app.get("/api/gutenberg/:id/epub", async (req, res) => {
       if (upstreamRes.ok) {
         const buf = Buffer.from(await upstreamRes.arrayBuffer());
         if (buf.length > 1000 && buf[0] === 0x50 && buf[1] === 0x4b) {
-          if (!fs.existsSync("./public/books")) {
-            fs.mkdirSync("./public/books", { recursive: true });
+          if (!fs.existsSync(DYNAMIC_BOOKS_DIR)) {
+            fs.mkdirSync(DYNAMIC_BOOKS_DIR, { recursive: true });
           }
-          const tempPath = `${filePath}.tmp.${Date.now()}`;
+          const targetFile = path.join(DYNAMIC_BOOKS_DIR, `${id}.epub`);
+          const tempPath = `${targetFile}.tmp.${Date.now()}`;
           fs.writeFileSync(tempPath, buf);
-          fs.renameSync(tempPath, filePath);
-          console.log(`Cached Gutenberg EPUB for book ${id} (${buf.length} bytes)`);
+          fs.renameSync(tempPath, targetFile);
+          console.log(`Cached Gutenberg EPUB for book ${id} (${buf.length} bytes) to dynamic cache`);
+          pruneDirectory(DYNAMIC_BOOKS_DIR, 50, 100 * 1024 * 1024);
           return res.json({
             id: book.id,
             title: book.title,
@@ -438,11 +607,6 @@ app.get("/api/doab/status", (req, res) => {
   });
 });
 
-const EPUB_CACHE_DIR = "./data/epub_cache";
-if (!fs.existsSync(EPUB_CACHE_DIR)) {
-  fs.mkdirSync(EPUB_CACHE_DIR, { recursive: true });
-}
-
 // DOAB bitstream proxy with strict allowlist, anti-SSRF DNS check, redirect validation, and disk caching
 app.get("/api/doab/proxy", async (req, res) => {
   const targetUrl = (req.query.url || "").toString().trim();
@@ -455,7 +619,7 @@ app.get("/api/doab/proxy", async (req, res) => {
   }
 
   const cacheKey = crypto.createHash("sha256").update(targetUrl).digest("hex");
-  const cacheFile = `${EPUB_CACHE_DIR}/${cacheKey}.epub`;
+  const cacheFile = path.join(DYNAMIC_EPUB_DIR, `${cacheKey}.epub`);
 
   if (fs.existsSync(cacheFile) && fs.statSync(cacheFile).size > 1000) {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -510,6 +674,7 @@ app.get("/api/doab/proxy", async (req, res) => {
       fs.writeFileSync(tempPath, buffer);
       if (fs.existsSync(cacheFile)) fs.unlinkSync(cacheFile);
       fs.renameSync(tempPath, cacheFile);
+      pruneDirectory(DYNAMIC_EPUB_DIR, 50, 100 * 1024 * 1024);
     }
 
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -563,6 +728,30 @@ function checkWriteFreeze(req, res, next) {
   next();
 }
 
+// Private Beta User Authorization
+const DEFAULT_BETA_USERS = [
+  "6aed806c0000eebfc713", // Ariolas (Foid Keller)
+  "6ae82af2003c3c5fea4c", // Sylus
+  "6aed977800397cf70df4", // anu
+  "6aed99a400205d5e9214", // Bidyut (Xenon)
+];
+
+export function isBetaAuthorized(user) {
+  if (!user || !user.$id) return false;
+  if (process.env.BETA_RESTRICT_ACCESS === "false") return true;
+
+  const rawAllowed = process.env.BETA_ALLOWED_USERS;
+  const allowedSet = new Set(
+    rawAllowed
+      ? rawAllowed.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
+      : DEFAULT_BETA_USERS.map((s) => s.toLowerCase())
+  );
+
+  const uid = user.$id.toLowerCase();
+  const email = (user.email || "").toLowerCase();
+  return allowedSet.has(uid) || (email && allowedSet.has(email));
+}
+
 async function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization || req.headers["x-appwrite-jwt"];
   let jwt = "";
@@ -579,6 +768,13 @@ async function requireAuth(req, res, next) {
   const user = await verifyAppwriteToken(jwt);
   if (!user || !user.$id) {
     return res.status(401).json({ error: "Invalid or expired session" });
+  }
+
+  if (!isBetaAuthorized(user)) {
+    return res.status(403).json({
+      error: "Your account is not authorized for LIBSQUE Private Beta. Please contact the administrator for access.",
+      betaUnauthorized: true,
+    });
   }
 
   req.user = user;
@@ -742,6 +938,27 @@ app.get("/api/social/reader/:targetUserId", requireAuth, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Gutenberg API running on http://localhost:${PORT}`);
+// SPA Fallback for React Router deep linking (non-API, non-asset requests)
+app.use((req, res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return next();
+  }
+  if (
+    req.path.startsWith("/api") ||
+    req.path.startsWith("/books") ||
+    req.path.startsWith("/assets")
+  ) {
+    return res.status(404).json({ error: "Resource not found" });
+  }
+  const indexPath = path.resolve(DIST_DIR, "index.html");
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  return res.status(503).send("Production frontend not built. Run 'npm run build'.");
+});
+
+app.listen(PORT, HOST, () => {
+  console.log(`LIBSQUE production server running on http://${HOST}:${PORT}`);
+  console.log(`Static build directory: ${DIST_DIR}`);
+  console.log(`Active Social Storage Engine: ${currentEngine}`);
 });

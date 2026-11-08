@@ -350,14 +350,23 @@ export const socialStoreTablesDb = {
       if (blockedUserIds.has(candidate.userId)) return false;
 
       // Intent compatibility
-      if (filterIntent === "dating" || userPref.intent === "dating") {
+      if (filterIntent === "dating") {
         if (!userPref.adultConfirmed || !candidate.adultConfirmed) return false;
         if (candidate.intent !== "dating" && candidate.intent !== "both") return false;
-      } else if (filterIntent === "friends" || userPref.intent === "friends") {
+      } else if (filterIntent === "friends") {
         if (candidate.intent !== "friends" && candidate.intent !== "both") return false;
       } else {
-        if (candidate.intent === "dating" && (!userPref.adultConfirmed || !candidate.adultConfirmed)) {
-          return false;
+        // filterIntent is "all" or default: filter according to user's registered intent
+        if (userPref.intent === "dating") {
+          if (!userPref.adultConfirmed || !candidate.adultConfirmed) return false;
+          if (candidate.intent !== "dating" && candidate.intent !== "both") return false;
+        } else if (userPref.intent === "friends") {
+          if (candidate.intent !== "friends" && candidate.intent !== "both") return false;
+        } else {
+          // User intent is "both"
+          if (candidate.intent === "dating" && (!userPref.adultConfirmed || !candidate.adultConfirmed)) {
+            return false;
+          }
         }
       }
       return true;

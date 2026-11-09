@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { SharedBench } from "./Illustrations";
+import readingBenchImg from "../assets/reading_bench.jpg";
 
 const CURATED_GENRES = [
   "Fiction",
@@ -225,7 +225,12 @@ function BookSearch() {
 
           {/* Clean hero character illustration without decorative frames or fake quotes */}
           <div className="lg:col-span-5 flex justify-center items-center">
-            <SharedBench className="w-full max-w-md h-auto" />
+            <img
+              src={readingBenchImg}
+              alt="Two readers sharing a bench reading together"
+              className="w-full max-w-md h-auto rounded-2xl shadow-xs object-cover"
+              loading="eager"
+            />
           </div>
         </div>
       </section>
